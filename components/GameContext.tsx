@@ -1,10 +1,11 @@
 
 import React, { createContext, useContext, useReducer, useEffect, ReactNode, useRef } from 'react';
 import { AppState, AppAction, User, Notification, Template, Player } from '../types';
-import { auth, onAuthStateChanged, signOut, syncUserRecord, upsertTemplate } from '../firebase';
+import { auth, onAuthStateChanged, signOut, syncUserRecord, upsertTemplate, db } from '../firebase';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { rebalanceQuestions } from '../utils/gameUtils';
 import { audioManager } from '../utils/audioUtils';
-import { SOUND_ASSETS } from '../constants';
+import { SOUND_ASSETS, INITIAL_BOARD_DATA } from '../constants';
 
 const initialState: AppState = {
   user: null,
@@ -63,7 +64,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       const updatedCats = [...state.activeTemplate.categories];
       updatedCats[action.payload.categoryIndex] = {
         ...updatedCats[action.payload.categoryIndex],
-        title: action.payload.title
+        [action.payload.field]: action.payload.value
       };
       return {
         ...state,
@@ -106,7 +107,8 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       compCats[action.payload.categoryIndex] = { ...compCats[action.payload.categoryIndex], questions: compQList };
       return {
         ...state,
-        activeTemplate: { ...state.activeTemplate, categories: compCats },
+        saveStatus: 'unsaved',
+        activeTemplate: { ...state.activeTemplate, categories: compCats, updatedAt: Date.now() },
         activeQuestionId: null,
         isAnswerRevealed: false
       };
@@ -219,7 +221,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Auto-save logic
   useEffect(() => {
-    if (state.activeTemplate && state.isEditing) {
+    if (state.activeTemplate) {
       // If we already have unsaved changes marked by the reducer, trigger debounce save
       if (state.saveStatus === 'unsaved') {
         if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -228,7 +230,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }, 2000); 
       }
     }
-  }, [state.activeTemplate, state.saveStatus, state.isEditing]);
+  }, [state.activeTemplate, state.saveStatus]);
 
   useEffect(() => {
     if (!auth) return;
@@ -240,6 +242,43 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           username: firebaseUser.displayName || 'Creator'
         };
         await syncUserRecord(user);
+
+        // Seeding Sample Logic
+        if (db) {
+            try {
+                // Check if user has any templates
+                const templatesRef = collection(db, 'templates');
+                const q = query(templatesRef, where('ownerId', '==', user.id), limit(1));
+                const snapshot = await getDocs(q);
+
+                if (snapshot.empty) {
+                    console.log("No templates found. Seeding sample template...");
+                    // Create deep copy of initial data to avoid reference issues
+                    const sampleCategories = JSON.parse(JSON.stringify(INITIAL_BOARD_DATA));
+                    
+                    const sampleTemplate: Template = {
+                        id: `tpl-sample-${Date.now()}`,
+                        ownerId: user.id,
+                        name: "Demo: Tech & Luxury",
+                        settings: {
+                            minPoints: 200,
+                            maxPoints: 1000,
+                            step: 200,
+                            currencySymbol: '$',
+                            timerDuration: 30
+                        },
+                        categories: sampleCategories,
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                        updatedBy: user.id
+                    };
+                    await upsertTemplate(sampleTemplate);
+                }
+            } catch (err) {
+                console.warn("Auto-seeding sample template failed (likely offline or permission issue):", err);
+            }
+        }
+
         dispatch({ type: 'SET_USER', payload: user });
       } else {
         dispatch({ type: 'SET_USER', payload: null });

@@ -21,6 +21,7 @@ export interface Question {
 export interface Category {
   id: string;
   title: string;
+  fontSize?: number;
   questions: Question[];
 }
 
@@ -105,7 +106,7 @@ export type AppAction =
   | { type: 'REMOVE_NOTIFICATION'; payload: string }
   | { type: 'LOAD_TEMPLATE'; payload: Template }
   | { type: 'UPDATE_TEMPLATE_SETTINGS'; payload: GameSettings }
-  | { type: 'UPDATE_CATEGORY'; payload: { categoryIndex: number; title: string } }
+  | { type: 'UPDATE_CATEGORY'; payload: { categoryIndex: number; field: keyof Category; value: any } }
   | { type: 'UPDATE_QUESTION'; payload: { categoryIndex: number; questionIndex: number; field: keyof Question; value: any } }
   | { type: 'SET_ACTIVE_QUESTION'; payload: string | null }
   | { type: 'REVEAL_ANSWER'; payload: boolean }

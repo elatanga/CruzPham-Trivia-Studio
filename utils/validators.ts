@@ -15,6 +15,7 @@ export const QuestionSchema = z.object({
 export const CategorySchema = z.object({
   id: z.string(),
   title: z.string().min(1).max(100, "Title too long (max 100 chars)"),
+  fontSize: z.number().optional(),
   questions: z.array(QuestionSchema).max(20, "Too many questions per category (max 20)")
 });
 

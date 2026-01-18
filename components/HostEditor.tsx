@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGame } from './GameContext';
 
 const HostEditor: React.FC = () => {
@@ -8,6 +8,18 @@ const HostEditor: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'config' | 'content'>('content');
   const [selectedCatIndex, setSelectedCatIndex] = useState(0);
+
+  // Protect against browser navigation/close when unsaved
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (saveStatus === 'unsaved') {
+        e.preventDefault();
+        e.returnValue = ''; // Required for Chrome
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [saveStatus]);
 
   if (!activeTemplate) return null;
 
@@ -162,14 +174,33 @@ const HostEditor: React.FC = () => {
                </div>
 
                <div className="space-y-4">
-                   <div className="relative group">
-                       <label className="absolute -top-2.5 left-2 bg-[#050505] px-2 text-[9px] text-[#d4af37] uppercase tracking-widest font-bold">Column Header</label>
-                       <input 
-                          value={activeTemplate.categories[selectedCatIndex].title}
-                          onChange={(e) => dispatch({ type: 'UPDATE_CATEGORY', payload: { categoryIndex: selectedCatIndex, title: e.target.value } })}
-                          className="w-full bg-transparent border border-white/20 rounded-xl p-4 text-sm text-white font-display font-bold text-center focus:border-[#d4af37] outline-none transition-all focus:shadow-[0_0_15px_rgba(212,175,55,0.1)]"
-                          placeholder="ENTER CATEGORY TITLE"
-                       />
+                   <div className="flex gap-2">
+                       <div className="flex-1 relative group">
+                           <label className="absolute -top-2.5 left-2 bg-[#050505] px-2 text-[9px] text-[#d4af37] uppercase tracking-widest font-bold">Column Header</label>
+                           <input 
+                              value={activeTemplate.categories[selectedCatIndex].title}
+                              onChange={(e) => dispatch({ type: 'UPDATE_CATEGORY', payload: { categoryIndex: selectedCatIndex, field: 'title', value: e.target.value } })}
+                              className="w-full bg-transparent border border-white/20 rounded-xl p-4 text-sm text-white font-display font-bold text-center focus:border-[#d4af37] outline-none transition-all focus:shadow-[0_0_15px_rgba(212,175,55,0.1)]"
+                              placeholder="ENTER CATEGORY TITLE"
+                           />
+                       </div>
+                       <div className="w-20 relative group">
+                           <label className="absolute -top-2.5 left-2 bg-[#050505] px-2 text-[9px] text-[#d4af37] uppercase tracking-widest font-bold">Size (px)</label>
+                           <input 
+                              type="number"
+                              value={activeTemplate.categories[selectedCatIndex].fontSize || ''}
+                              placeholder="Auto"
+                              onChange={(e) => dispatch({ 
+                                  type: 'UPDATE_CATEGORY', 
+                                  payload: { 
+                                      categoryIndex: selectedCatIndex, 
+                                      field: 'fontSize', 
+                                      value: e.target.value ? parseInt(e.target.value) : undefined 
+                                  } 
+                              })}
+                              className="w-full bg-transparent border border-white/20 rounded-xl p-4 text-sm text-white font-mono text-center focus:border-[#d4af37] outline-none transition-all"
+                           />
+                       </div>
                    </div>
                </div>
 

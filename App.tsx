@@ -104,13 +104,30 @@ const Landing: React.FC = () => {
 
 const Studio: React.FC = () => {
   const { state, dispatch, saveTemplate } = useGame();
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+
+  const handleExitClick = () => {
+    if (state.saveStatus === 'unsaved') {
+      setShowExitConfirm(true);
+    } else {
+      dispatch({ type: 'SET_VIEW', payload: 'dashboard' });
+    }
+  };
+
+  const handleConfirmExit = async (shouldSave: boolean) => {
+    if (shouldSave) {
+       await saveTemplate();
+    }
+    dispatch({ type: 'SET_VIEW', payload: 'dashboard' });
+    setShowExitConfirm(false);
+  };
   
   return (
     <div className="relative h-screen flex bg-[#010101] overflow-hidden text-center">
       {/* Container for the Main Stage and Header */}
       <div className="flex-1 flex flex-col min-w-0 h-full">
         <header className="h-16 md:h-20 px-4 md:px-8 flex items-center justify-between border-b border-white/5 z-20 shrink-0 glass-card text-center">
-          <div className="flex items-center gap-3 md:gap-6 cursor-pointer group justify-center" onClick={() => { saveTemplate(); dispatch({ type: 'SET_VIEW', payload: 'dashboard' }); }}>
+          <div className="flex items-center gap-3 md:gap-6 cursor-pointer group justify-center" onClick={handleExitClick}>
             <div className="w-10 h-10 bg-[#d4af37] rounded-xl flex items-center justify-center font-black text-black shadow-2xl group-hover:scale-110 transition-transform text-[10px]">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
             </div>
@@ -162,6 +179,37 @@ const Studio: React.FC = () => {
 
       {/* Question Overlay */}
       {state.activeQuestionId && <QuestionView />}
+
+      {/* Unsaved Changes Modal */}
+      {showExitConfirm && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+            <div className="w-full max-w-md glass-card p-8 rounded-3xl border border-[#d4af37]/30 shadow-[0_0_50px_rgba(0,0,0,0.8)] text-center">
+                <h2 className="text-xl font-display font-bold text-white uppercase tracking-tight mb-2">Unsaved Changes</h2>
+                <p className="text-[10px] text-white/50 uppercase tracking-widest mb-8">Production data has not been synced to the vault.</p>
+                
+                <div className="flex flex-col gap-3">
+                    <button 
+                        onClick={() => handleConfirmExit(true)}
+                        className="w-full py-4 bg-[#d4af37] text-black rounded-xl text-[10px] uppercase tracking-[0.2em] font-black hover:bg-white transition-all shadow-lg"
+                    >
+                        Sync & Exit
+                    </button>
+                    <button 
+                        onClick={() => handleConfirmExit(false)}
+                        className="w-full py-4 border border-red-500/30 text-red-500 rounded-xl text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-red-500/10 transition-all"
+                    >
+                        Discard Changes
+                    </button>
+                    <button 
+                        onClick={() => setShowExitConfirm(false)}
+                        className="w-full py-4 text-white/30 hover:text-white text-[10px] uppercase tracking-[0.2em] font-bold transition-all"
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -187,6 +235,117 @@ const AppContent: React.FC = () => {
       {state.view === 'auth' && <Auth />}
       {state.view === 'dashboard' && <Dashboard />}
       {state.view === 'studio' && <Studio />}
+      {state.view === 'template/edit' && <TemplateEditor />}
+      {(state.view === 'game/live' || state.view === 'game/question' || state.view === 'game/control') && <LiveGame />}
+    </div>
+  );
+};
+
+// Definitions for TemplateEditor and LiveGame were moved to be accessible by AppContent
+const TemplateEditor: React.FC = () => {
+  const { dispatch } = useGame();
+  return (
+    <div className="h-screen bg-[#010101] flex flex-col overflow-hidden text-center">
+      <header className="h-20 md:h-24 px-6 md:px-12 flex items-center justify-between border-b border-white/5 shrink-0 glass-card text-center z-20">
+        <div className="flex items-center gap-4 md:gap-6">
+          <button onClick={() => dispatch({ type: 'SET_VIEW', payload: 'dashboard' })} className="text-white/30 hover:text-white transition-all">
+            <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <h1 className="text-lg md:text-2xl font-display font-bold gold-gradient uppercase text-center tracking-tight">Editing Studio</h1>
+        </div>
+        <button 
+          onClick={() => dispatch({ type: 'SET_VIEW', payload: 'dashboard' })}
+          className="px-6 md:px-8 py-2 md:py-3 bg-[#d4af37] text-black font-black rounded-xl md:rounded-2xl uppercase text-[8px] md:text-[10px] tracking-[0.2em] text-center"
+        >
+          Save Production
+        </button>
+      </header>
+      <main className="flex-1 flex overflow-hidden relative text-center">
+        <div className="flex-1 relative overflow-hidden flex flex-col items-center justify-center text-center p-4 md:p-10">
+           <div className="w-full h-full opacity-40 scale-[0.85] md:scale-90 pointer-events-none flex items-center justify-center">
+             <TriviaBoard />
+           </div>
+           <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-center p-6">
+             <div className="glass-card p-8 md:p-12 rounded-[2rem] md:rounded-[3rem] border border-[#d4af37]/40 text-center space-y-4 md:space-y-6 flex flex-col items-center max-w-lg">
+                <p className="text-[#d4af37] font-black uppercase tracking-[0.5em] text-[10px] md:text-xs text-center">Direct Access Enabled</p>
+                <h2 className="text-2xl md:text-4xl text-white font-display font-bold text-center leading-tight">Use the Sidebar to Modify Clues</h2>
+                <p className="text-white/30 text-xs md:text-sm text-center">Real-time changes are auto-archived in the production vault.</p>
+             </div>
+           </div>
+        </div>
+        {/* Rendered as part of a flex layout if we wanted to push content, 
+            but keeping the 'fixed' for consistency while ensuring App.tsx manages the space */}
+        <div className="hidden lg:block shrink-0 w-[450px]">
+           <HostEditor />
+        </div>
+      </main>
+    </div>
+  );
+};
+
+const LiveGame: React.FC = () => {
+  const { state, dispatch } = useGame();
+  return (
+    <div className="relative h-screen flex bg-[#010101] overflow-hidden text-center">
+      {/* Container for the Main Stage and Header */}
+      <div className="flex-1 flex flex-col min-w-0 h-full">
+        <header className="h-20 md:h-28 px-4 md:px-12 flex items-center justify-between border-b border-white/5 z-20 shrink-0 glass-card text-center">
+          <div className="flex items-center gap-3 md:gap-8 cursor-pointer group justify-center" onClick={() => dispatch({ type: 'SET_VIEW', payload: 'dashboard' })}>
+            <div className="w-10 h-10 md:w-14 md:h-14 bg-[#d4af37] rounded-xl md:rounded-2xl flex items-center justify-center font-black text-black shadow-2xl group-hover:scale-110 transition-transform text-[10px] md:text-base">CP</div>
+            <div className="flex flex-col items-start text-left">
+               <h1 className="text-xl md:text-4xl font-display font-bold gold-gradient tracking-tighter uppercase leading-none text-center">Live Studio</h1>
+               <span className="text-[6px] md:text-[10px] uppercase tracking-[0.4em] font-black text-white/20 text-center">Frequency Locked</span>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4 md:gap-10 justify-center">
+            <div className="flex bg-white/[0.03] p-1 rounded-2xl md:rounded-3xl border border-white/10 shrink-0">
+               <button 
+                  onClick={() => dispatch({ type: 'TOGGLE_EDITING' })}
+                  className={`px-4 md:px-8 py-2 md:py-3 rounded-xl md:rounded-2xl text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] transition-all duration-300 text-center ${state.isEditing ? 'bg-[#d4af37] text-black shadow-2xl' : 'text-white/30 hover:text-white'}`}
+               >
+                  Director
+               </button>
+               <button 
+                  onClick={() => dispatch({ type: 'TOGGLE_LIVE_MODE' })}
+                  className={`px-4 md:px-8 py-2 md:py-3 rounded-xl md:rounded-2xl text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] transition-all duration-300 text-center ${state.isLiveMode ? 'bg-red-600 text-white shadow-2xl animate-pulse' : 'text-white/30 hover:text-white'}`}
+               >
+                  Live Feed
+               </button>
+            </div>
+            <button 
+              onClick={() => dispatch({ type: 'TOGGLE_EDITING' })}
+              className={`p-3 md:p-4 rounded-xl md:rounded-2xl border-2 transition-all duration-300 text-center shrink-0 ${state.isEditing ? 'bg-[#d4af37]/10 border-[#d4af37]/40 text-[#d4af37] scale-105 shadow-2xl' : 'border-white/5 text-white/20 hover:text-white'}`}
+            >
+              <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+            </button>
+          </div>
+        </header>
+
+        <main className="flex-1 flex overflow-hidden min-h-0 relative text-center">
+          {/* Central Stage Area: Flexible centering */}
+          <div className="flex-1 relative flex flex-col items-center justify-center min-w-0 text-center p-2 md:p-6 lg:p-12 overflow-hidden">
+            <TriviaBoard />
+          </div>
+          
+          {/* Responsive Scoreboard: Sits on the right of the board */}
+          <div className="hidden sm:block shrink-0 h-full">
+             <Scoreboard />
+          </div>
+        </main>
+      </div>
+
+      {/* Director Control Sidebar: Flexibly pushed to the right when active */}
+      {state.isEditing && (
+        <div className="shrink-0 w-[350px] md:w-[450px] h-full z-50 border-l border-white/5 shadow-[-40px_0_80px_rgba(0,0,0,0.5)] bg-black/40 backdrop-blur-2xl">
+           <HostEditor />
+        </div>
+      )}
+
+      {/* Floating Scoreboard for mobile if needed, or keeping standard. 
+          The current layout handles Scoreboard as a right-side element in main. */}
+
+      {(state.view === 'game/question' || state.activeQuestionId) && <QuestionView />}
     </div>
   );
 };

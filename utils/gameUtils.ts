@@ -1,8 +1,31 @@
 
 import { Category, GameSettings, Question, Template } from "../types";
 
+export const calculateGridMetrics = (rowCount: number) => {
+  // Enforce rigid 100-point increment structure
+  const targetMax = 1000;
+  const safeRows = Math.max(1, Math.min(10, rowCount));
+  
+  // Calculate the largest 100-increment step that fits within targetMax for the given rows
+  // e.g. 4 rows: 1000 / 4 = 250. Floor to 100s = 200.
+  // This ensures we never get 166, 250, 333 etc.
+  let step = Math.floor((targetMax / safeRows) / 100) * 100;
+  
+  // Minimum step fallback
+  if (step < 100) step = 100;
+
+  const maxPoints = step * safeRows;
+  
+  return {
+    minPoints: step,
+    maxPoints: maxPoints,
+    step: step
+  };
+};
+
 export const generateEmptyCategory = (id: string, settings: GameSettings): Category => {
   const questions: Question[] = [];
+  // Loop through points based on settings
   for (let p = settings.minPoints; p <= settings.maxPoints; p += settings.step) {
     questions.push({
       id: `${id}-${p}`,
@@ -21,24 +44,28 @@ export const generateEmptyCategory = (id: string, settings: GameSettings): Categ
   };
 };
 
-export const createNewTemplate = (ownerId: string): Template => {
+export const createNewTemplate = (ownerId: string, name: string = "Untitled Production", rowCount: number = 5): Template => {
+  const { minPoints, maxPoints, step } = calculateGridMetrics(rowCount);
+
   const settings: GameSettings = {
-    minPoints: 100,
-    maxPoints: 500,
-    step: 100,
+    minPoints,
+    maxPoints,
+    step,
     currencySymbol: '$',
     timerDuration: 30
   };
 
   const categories: Category[] = [];
   for(let i=0; i<6; i++) {
-    categories.push(generateEmptyCategory(`cat-${Date.now()}-${i}`, settings));
+    // Adding random suffix to ensure uniqueness even if called rapidly
+    const uniqueSuffix = Math.random().toString(36).substr(2, 5);
+    categories.push(generateEmptyCategory(`cat-${Date.now()}-${i}-${uniqueSuffix}`, settings));
   }
 
   return {
     id: `tpl-${Date.now()}`,
     ownerId,
-    name: "Untitled Production",
+    name,
     settings,
     categories,
     createdAt: Date.now(),

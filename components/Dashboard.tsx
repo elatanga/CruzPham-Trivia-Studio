@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useGame } from './GameContext';
 import { subscribeToTemplates, upsertTemplate, db } from '../firebase';
 import { Template } from '../types';
-import { createNewTemplate, exportTemplateToJSON } from '../utils/gameUtils';
+import { createNewTemplate, exportTemplateToJSON, calculateGridMetrics } from '../utils/gameUtils';
 import { validateTemplate } from '../utils/validators';
 import { doc, deleteDoc } from 'firebase/firestore';
 
@@ -11,6 +11,14 @@ const Dashboard: React.FC = () => {
   const { state, dispatch, logout, notify } = useGame();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Creation Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newProdName, setNewProdName] = useState('');
+  const [rowCount, setRowCount] = useState(5);
+
+  // Calculate metrics for preview
+  const previewMetrics = calculateGridMetrics(rowCount);
 
   useEffect(() => {
     if (!state.user) return;
@@ -21,16 +29,27 @@ const Dashboard: React.FC = () => {
     return () => unsub();
   }, [state.user]);
 
-  const handleCreate = async () => {
+  const initiateCreate = () => {
     if (templates.length >= 40) {
       notify('error', 'Storage Limit Reached. Max 40 Productions.');
       return;
     }
-    const newTpl = createNewTemplate(state.user!.id);
-    // Optional: Could open a modal here for "Wizard" steps (Name, Currency, Categories)
-    // For now, we auto-create and jump to editor which acts as the builder
-    await upsertTemplate(newTpl);
-    dispatch({ type: 'LOAD_TEMPLATE', payload: newTpl });
+    setNewProdName('');
+    setRowCount(5);
+    setIsModalOpen(true);
+  };
+
+  const confirmCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const newTpl = createNewTemplate(state.user!.id, newProdName || "Untitled Production", rowCount);
+      await upsertTemplate(newTpl);
+      dispatch({ type: 'LOAD_TEMPLATE', payload: newTpl });
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      notify('error', 'Failed to initialize production.');
+    }
   };
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -75,10 +94,10 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-[1600px] mx-auto p-6 md:p-12 animate-in fade-in duration-700">
+    <div className="w-full max-w-[1600px] mx-auto p-6 md:p-12 animate-in fade-in duration-700 relative">
       <header className="flex flex-col md:flex-row items-start md:items-center justify-between mb-12 border-b border-white/5 pb-8 gap-6">
         <div>
-          <h1 className="text-4xl md:text-6xl font-display font-bold text-white uppercase tracking-tight leading-none mb-2">Studio Dashboard</h1>
+          <h1 className="text-4xl md:text-6xl font-display font-bold text-white uppercase tracking-tight leading-none mb-2">Cruzpham Studio Trivia Dashboard</h1>
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
@@ -105,10 +124,10 @@ const Dashboard: React.FC = () => {
              <p className="text-[10px] text-[#d4af37] uppercase tracking-[0.3em]">Accessing Vault...</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
           {/* Create Button - Luxury Card */}
           <div 
-            onClick={handleCreate}
+            onClick={initiateCreate}
             className="group relative h-[300px] glass-card rounded-[2rem] border border-white/10 flex flex-col items-center justify-center gap-6 cursor-pointer overflow-hidden transition-all duration-500 hover:border-[#d4af37]/50 hover:shadow-[0_0_50px_rgba(212,175,55,0.1)]"
           >
              <div className="absolute inset-0 bg-gradient-to-br from-[#d4af37]/0 to-[#d4af37]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -155,7 +174,7 @@ const Dashboard: React.FC = () => {
                             {tpl.categories.length} Columns
                         </span>
                         <span className="px-2 py-1 rounded bg-white/5 border border-white/5 text-[8px] text-white/50 uppercase tracking-wider">
-                            {tpl.settings.currencySymbol} Currency
+                            {tpl.settings.maxPoints} Max PTS
                         </span>
                     </div>
                  </div>
@@ -180,6 +199,85 @@ const Dashboard: React.FC = () => {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Credits Footer */}
+      <footer className="mt-12 text-center border-t border-white/5 pt-8">
+        <p className="text-[10px] text-white/20 uppercase tracking-[0.4em] font-bold">
+            Built by <span className="text-[#d4af37]">CruzPham</span> & <span className="text-[#d4af37]">El</span>
+        </p>
+      </footer>
+
+      {/* Creation Modal */}
+      {isModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+              <div className="w-full max-w-lg glass-card p-8 rounded-3xl border border-[#d4af37]/30 shadow-[0_0_50px_rgba(0,0,0,0.8)]">
+                  <div className="text-center mb-8">
+                      <h2 className="text-2xl font-display font-bold text-white uppercase tracking-tight">Initialize Production</h2>
+                      <p className="text-[10px] text-[#d4af37] uppercase tracking-[0.3em] mt-2">Configure Grid Parameters</p>
+                  </div>
+                  
+                  <form onSubmit={confirmCreate} className="space-y-6">
+                      <div className="space-y-2">
+                          <label className="text-[9px] text-white/40 uppercase tracking-widest font-bold ml-1">Production Name</label>
+                          <input 
+                              type="text"
+                              value={newProdName}
+                              onChange={e => setNewProdName(e.target.value)}
+                              placeholder="ENTER TITLE..."
+                              className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-4 text-center text-sm text-white placeholder:text-white/10 focus:border-[#d4af37] outline-none transition-all uppercase tracking-widest"
+                              autoFocus
+                          />
+                      </div>
+
+                      <div className="space-y-4">
+                          <div className="flex justify-between items-end">
+                              <label className="text-[9px] text-white/40 uppercase tracking-widest font-bold ml-1">Grid Rows (Points)</label>
+                              <span className="text-[#d4af37] font-mono text-xl font-bold">{rowCount}</span>
+                          </div>
+                          <input 
+                              type="range"
+                              min="1"
+                              max="10"
+                              value={rowCount}
+                              onChange={e => setRowCount(parseInt(e.target.value))}
+                              className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[#d4af37]"
+                          />
+                          <div className="flex justify-between text-[8px] text-white/20 uppercase tracking-wider">
+                              <span>1 Row</span>
+                              <span>Max 10 Rows</span>
+                          </div>
+                      </div>
+
+                      <div className="p-4 bg-[#d4af37]/5 rounded-xl border border-[#d4af37]/10 flex flex-col gap-2">
+                         <div className="flex justify-between text-[10px] uppercase tracking-widest text-white/60">
+                            <span>Max Value:</span>
+                            <span className="text-[#d4af37] font-bold">{previewMetrics.maxPoints}</span>
+                         </div>
+                         <div className="flex justify-between text-[10px] uppercase tracking-widest text-white/60">
+                            <span>Step Value:</span>
+                            <span className="text-[#d4af37] font-bold">{previewMetrics.step}</span>
+                         </div>
+                      </div>
+
+                      <div className="flex gap-4 pt-4">
+                          <button 
+                              type="button"
+                              onClick={() => setIsModalOpen(false)}
+                              className="flex-1 py-4 border border-white/10 rounded-xl text-[10px] text-white/40 uppercase tracking-[0.2em] font-bold hover:bg-white/5 hover:text-white transition-all"
+                          >
+                              Cancel
+                          </button>
+                          <button 
+                              type="submit"
+                              className="flex-1 py-4 bg-[#d4af37] text-black rounded-xl text-[10px] uppercase tracking-[0.2em] font-black hover:bg-white transition-all shadow-lg"
+                          >
+                              Create & Save
+                          </button>
+                      </div>
+                  </form>
+              </div>
+          </div>
       )}
     </div>
   );

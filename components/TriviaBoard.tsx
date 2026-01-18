@@ -1,12 +1,25 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useGame } from './GameContext';
 
 const TriviaBoard: React.FC = () => {
   const { state, dispatch } = useGame();
   const { activeTemplate } = state;
 
-  if (!activeTemplate) {
+  // Compute layout metrics
+  const layout = useMemo(() => {
+    if (!activeTemplate) return null;
+
+    const colCount = activeTemplate.categories.length;
+    // Calculate max rows based on the category with most questions to ensure grid integrity
+    // Default to at least 5 rows if empty, limit visual impact
+    const maxQuestions = Math.max(...activeTemplate.categories.map(c => c.questions.length), 0);
+    const rowCount = Math.max(maxQuestions, 5);
+
+    return { colCount, rowCount };
+  }, [activeTemplate]);
+
+  if (!activeTemplate || !layout) {
     return (
         <div className="w-full h-full flex items-center justify-center">
             <div className="text-white/30 uppercase tracking-widest animate-pulse font-mono text-xs">Waiting for Production Data...</div>
@@ -14,34 +27,60 @@ const TriviaBoard: React.FC = () => {
     );
   }
 
-  const colCount = activeTemplate.categories.length;
-  // Calculate max rows based on the category with most questions to ensure grid integrity
-  const rowCount = Math.max(...activeTemplate.categories.map(c => c.questions.length), 5);
+  const { colCount, rowCount } = layout;
 
-  // Density flags for text sizing
-  const isCompact = colCount > 6;
-  const isUltraCompact = colCount > 9;
+  // Dynamic Sizing Logic
+  // We determine a "density" factor to scale text and spacing
+  const isHighRowDensity = rowCount > 6;
+  const isHighColDensity = colCount > 6;
+  const isExtremeDensity = rowCount >= 9 || colCount >= 8;
+
+  // Header Height Calculation
+  // Shrink header slightly if we have many rows to maximize game board space
+  const headerHeightClass = isHighRowDensity 
+    ? 'h-14 md:h-20 lg:h-24' 
+    : 'h-16 md:h-24 lg:h-28';
+
+  // Tile Text Size Calculation
+  const getTileTextSize = () => {
+    if (isExtremeDensity) return 'text-sm sm:text-lg md:text-2xl lg:text-3xl';
+    if (isHighRowDensity || isHighColDensity) return 'text-lg sm:text-xl md:text-3xl lg:text-4xl';
+    return 'text-xl sm:text-2xl md:text-4xl lg:text-5xl';
+  };
+  const tileTextSize = getTileTextSize();
+
+  // Category Title Size
+  const getHeaderTitleSize = () => {
+    if (colCount > 8) return 'text-[7px] sm:text-[9px] md:text-[10px]';
+    if (colCount > 5) return 'text-[8px] sm:text-[10px] md:text-xs';
+    return 'text-[10px] sm:text-xs md:text-sm lg:text-base tracking-widest';
+  };
+  const headerTitleSize = getHeaderTitleSize();
 
   return (
-    // Outer container: fills parent, adds safe padding, handles centering
-    <div className="w-full h-full flex items-center justify-center p-2 md:p-4 lg:p-6 overflow-hidden">
+    // Outer container: fills parent, handles safe padding.
+    // Reduced padding on small screens/dense layouts to maximize visible board area.
+    <div className={`w-full h-full flex items-center justify-center overflow-hidden transition-all duration-500 ${isExtremeDensity ? 'p-1 md:p-2' : 'p-2 md:p-4 lg:p-6'}`}>
       
       {/* Board Frame: The actual game board container */}
       <div className="flex flex-col w-full h-full max-w-[1920px] mx-auto shadow-2xl bg-[#0a0a0a] rounded-2xl overflow-hidden border border-white/10 ring-1 ring-white/5">
         
         {/* Header Row (Categories) */}
-        <div className="flex w-full divide-x divide-white/10 border-b-2 border-white/10 bg-white/[0.03]">
+        <div className={`flex w-full divide-x divide-white/10 border-b-2 border-white/10 bg-white/[0.03] shrink-0 transition-all duration-300`}>
             {activeTemplate.categories.map((cat) => (
                 <div 
                     key={cat.id} 
                     style={{ width: `${100 / colCount}%` }}
-                    className="relative group h-16 md:h-24 lg:h-28 flex flex-col items-center justify-center p-1 md:p-2 transition-colors hover:bg-white/5"
+                    className={`relative group flex flex-col items-center justify-center p-1 transition-colors hover:bg-white/5 ${headerHeightClass}`}
                 >
-                    <div className="w-full h-full flex items-center justify-center overflow-hidden">
-                        <h3 className={`
-                            font-black text-[#d4af37] text-center uppercase leading-tight drop-shadow-md break-words w-full line-clamp-3
-                            ${isUltraCompact ? 'text-[8px] md:text-[10px]' : isCompact ? 'text-[10px] md:text-xs' : 'text-xs md:text-sm lg:text-base tracking-widest'}
-                        `}>
+                    <div className="w-full h-full flex items-center justify-center overflow-hidden px-0.5">
+                        <h3 
+                            style={{ fontSize: cat.fontSize ? `${cat.fontSize}px` : undefined }}
+                            className={`
+                                font-black text-[#d4af37] text-center uppercase leading-tight drop-shadow-md break-words w-full line-clamp-3
+                                ${headerTitleSize}
+                            `}
+                        >
                             {cat.title}
                         </h3>
                     </div>
@@ -52,7 +91,8 @@ const TriviaBoard: React.FC = () => {
         </div>
 
         {/* Questions Grid Area */}
-        <div className="flex-1 w-full min-h-0 bg-[#050505]">
+        {/* min-h-0 is critical for nested flex scrolling/containment */}
+        <div className="flex-1 w-full min-h-0 bg-[#050505] relative">
              <div 
                 style={{
                     display: 'grid',
@@ -84,37 +124,38 @@ const TriviaBoard: React.FC = () => {
                              <div 
                                 key={q.id}
                                 className={`
-                                    relative w-full h-full p-1 md:p-2
+                                    relative w-full h-full
                                     ${!isLastCol && 'border-r border-white/5'}
                                     ${!isLastRow && 'border-b border-white/5'}
+                                    // Use minimal padding for dense grids to prevent layout shifts
+                                    ${isExtremeDensity ? 'p-0.5' : 'p-1 md:p-2'}
                                 `}
                              >
                                 <button
                                     onClick={() => !isInactive && dispatch({ type: 'SET_ACTIVE_QUESTION', payload: q.id })}
                                     disabled={isInactive}
                                     className={`
-                                        w-full h-full rounded-lg flex items-center justify-center transition-all duration-300 relative overflow-hidden group
+                                        w-full h-full rounded-md md:rounded-lg flex items-center justify-center transition-all duration-300 relative overflow-hidden group
                                         ${isInactive 
                                             ? 'cursor-default' 
-                                            : 'hover:bg-[#d4af37]/10 hover:shadow-[0_0_25px_rgba(212,175,55,0.2)] hover:border-[#d4af37]/40 hover:-translate-y-0.5 border border-transparent cursor-pointer bg-gradient-to-br from-white/[0.02] to-transparent active:scale-[0.98]'
+                                            : 'hover:bg-[#d4af37]/10 hover:shadow-[0_0_25px_rgba(212,175,55,0.2)] hover:border-[#d4af37]/40 border border-transparent cursor-pointer bg-gradient-to-br from-white/[0.02] to-transparent active:scale-[0.98]'
                                         }
                                     `}
                                 >
                                     {isVoid ? (
-                                        <span className="text-white/10 font-mono text-[8px] md:text-[10px] uppercase tracking-widest -rotate-12 border-2 border-white/10 px-2 py-1 rounded opacity-50">VOID</span>
+                                        <span className={`text-white/10 font-mono uppercase tracking-widest -rotate-12 border-2 border-white/10 px-2 py-1 rounded opacity-50 ${isExtremeDensity ? 'text-[6px]' : 'text-[8px] md:text-[10px]'}`}>VOID</span>
                                     ) : !isCompleted ? (
                                         <span className={`
-                                            font-display font-bold tracking-tighter transition-all duration-500
+                                            font-display font-bold tracking-tighter transition-all duration-500 text-center leading-none
                                             ${isInactive ? 'opacity-0' : 'gold-gradient drop-shadow-sm group-hover:scale-110 group-hover:brightness-125'}
-                                            ${isUltraCompact ? 'text-sm md:text-xl' : isCompact ? 'text-lg md:text-3xl' : 'text-2xl md:text-5xl'}
+                                            ${tileTextSize}
                                         `}>
                                             {activeTemplate.settings.currencySymbol}{q.points}
                                         </span>
                                     ) : (
                                         // Completed State - Empty/Subtle
                                         <div className="w-full h-full flex items-center justify-center">
-                                            {/* Optional: Add a subtle checkmark or logo if desired, for now keeping it clean/empty as per TV style */}
-                                            <span className="text-[#d4af37]/5 text-4xl select-none">●</span>
+                                            <span className="text-[#d4af37]/5 select-none text-2xl md:text-4xl">●</span>
                                         </div>
                                     )}
                                 </button>
@@ -127,18 +168,17 @@ const TriviaBoard: React.FC = () => {
         </div>
 
         {/* Footer: Controls & Credits */}
-        <div className="h-8 md:h-10 bg-[#0a0a0a] border-t border-white/10 flex items-center justify-between px-4 shrink-0">
-            <div className="flex items-center gap-4 text-[8px] md:text-[9px] text-white/30 font-mono uppercase tracking-wider">
+        <div className="h-6 md:h-8 lg:h-10 bg-[#0a0a0a] border-t border-white/10 flex items-center justify-between px-2 md:px-4 shrink-0 transition-all duration-300">
+            <div className="flex items-center gap-2 md:gap-4 text-[6px] md:text-[8px] lg:text-[9px] text-white/30 font-mono uppercase tracking-wider overflow-hidden whitespace-nowrap">
                <span className="hidden sm:inline">SHORTCUTS:</span>
-               <div className="flex gap-3">
+               <div className="flex gap-2 md:gap-3">
                    <span title="Select Player">1-8 <span className="text-white/10">PLAYER</span></span>
                    <span title="Adjust Score">+/- <span className="text-white/10">SCORE</span></span>
                    <span title="Fullscreen">F <span className="text-white/10">FULL</span></span>
                    <span title="Reveal Answer" className="hidden lg:inline">SPACE <span className="text-white/10">REVEAL</span></span>
-                   <span title="Close Question" className="hidden lg:inline">ESC <span className="text-white/10">CLOSE</span></span>
                </div>
             </div>
-            <div className="text-[8px] md:text-[9px] text-[#d4af37]/40 uppercase tracking-[0.2em] font-black">
+            <div className="text-[6px] md:text-[8px] lg:text-[9px] text-[#d4af37]/40 uppercase tracking-[0.2em] font-black truncate ml-2">
                 Powered by CruzPham
             </div>
         </div>
