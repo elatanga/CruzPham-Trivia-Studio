@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useReducer, useEffect, ReactNode, useCallback } from 'react';
-import { GameState, GameAction, GameTemplate, GameSession, Player, Clue } from '../types';
+import { GameState, GameAction, GameTemplate, GameSession, Player, Clue, Notification } from '../types';
 import { INITIAL_BOARD_DATA, SOUND_ASSETS } from '../constants';
 import { db, upsertTemplate, upsertSession, subscribeToTemplates, subscribeToGameSession, auth, onAuthStateChanged, signOut } from '../firebase';
 
@@ -10,6 +10,7 @@ const GameContext = createContext<{
   playSound: (key: keyof typeof SOUND_ASSETS) => void;
   exportTemplate: (id: string) => void;
   handleLogout: () => Promise<void>;
+  notify: (type: Notification['type'], message: string, duration?: number) => void;
 } | undefined>(undefined);
 
 const gameReducer = (state: GameState, action: GameAction): GameState => {
@@ -36,14 +37,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       upsertTemplate(action.payload);
       break;
     case 'IMPORT_TEMPLATE':
-      try {
-        const validated = action.payload as GameTemplate;
-        newState = { ...state, templates: [validated, ...state.templates] };
-        upsertTemplate(validated);
-      } catch (err) {
-        alert("Integrity Check Failed: Malformed template file.");
-        return state;
-      }
+      newState = { ...state, templates: [action.payload, ...state.templates] };
+      upsertTemplate(action.payload);
       break;
     case 'DELETE_TEMPLATE':
       newState = { ...state, templates: state.templates.filter(t => t.id !== action.payload) };
@@ -60,6 +55,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const newSession: GameSession = {
         id: action.payload.gameId,
         templateId: action.payload.templateId,
+        ownerId: state.user?.id || 'guest',
         activeQuestion: null,
         showAnswer: false,
         scoreboard: state.gameSession?.scoreboard || [],
@@ -119,6 +115,18 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         gameSession: { ...state.gameSession, timer: Math.max(0, state.gameSession.timer - 1) }
       };
       break;
+    case 'ADD_NOTIFICATION':
+      newState = { 
+        ...state, 
+        notifications: [...state.notifications, { ...action.payload, id: Math.random().toString(36).substr(2, 9) }] 
+      };
+      break;
+    case 'REMOVE_NOTIFICATION':
+      newState = { 
+        ...state, 
+        notifications: state.notifications.filter(n => n.id !== action.payload) 
+      };
+      break;
     default:
       return state;
   }
@@ -138,8 +146,13 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     isLiveMode: false,
     isEditing: false,
     soundEnabled: true,
-    saveStatus: 'idle'
+    saveStatus: 'idle',
+    notifications: []
   });
+
+  const notify = useCallback((type: Notification['type'], message: string, duration = 5000) => {
+    dispatch({ type: 'ADD_NOTIFICATION', payload: { type, message, duration } });
+  }, []);
 
   const playSound = useCallback((key: keyof typeof SOUND_ASSETS) => {
     if (!state.soundEnabled) return;
@@ -156,16 +169,22 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     a.download = `cruzpham-production-${id}.json`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [state.templates]);
+    notify('success', 'Production Archive Exported');
+  }, [state.templates, notify]);
 
   const handleLogout = useCallback(async () => {
     if (!auth) {
       dispatch({ type: 'LOGOUT' });
       return;
     }
-    await signOut(auth);
-    dispatch({ type: 'LOGOUT' });
-  }, []);
+    try {
+      await signOut(auth);
+      dispatch({ type: 'LOGOUT' });
+      notify('info', 'Secure Logout Successful');
+    } catch (err) {
+      notify('error', 'Logout Protocol Interrupted');
+    }
+  }, [notify]);
 
   // Sync Auth State
   useEffect(() => {
@@ -221,7 +240,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [state.gameSession?.timerRunning, state.gameSession?.timer]);
 
   return (
-    <GameContext.Provider value={{ state, dispatch, playSound, exportTemplate, handleLogout }}>
+    <GameContext.Provider value={{ state, dispatch, playSound, exportTemplate, handleLogout, notify }}>
       {children}
     </GameContext.Provider>
   );

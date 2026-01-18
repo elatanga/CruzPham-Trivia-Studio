@@ -79,6 +79,8 @@ const Auth: React.FC = () => {
       if (code === 'auth/email-already-in-use') setError("Identity already exists in vault.");
       else if (code === 'auth/wrong-password' || code === 'auth/user-not-found') setError("Invalid credential signature.");
       else if (code === 'auth/invalid-email') setError("Email protocol malformed.");
+      else if (code === 'auth/network-request-failed') setError("Network Connection Lost.");
+      else if (code === 'auth/too-many-requests') setError("Access Rate Limit Exceeded.");
       else setError("Handshake failed. Protocol error.");
     } finally {
       setLoading(false);
@@ -104,7 +106,12 @@ const Auth: React.FC = () => {
       await syncUserRecord(userPayload);
       dispatch({ type: 'LOGIN', payload: userPayload });
     } catch (err: any) {
-      setError("Google identity access denied.");
+      console.error("Google Auth Error:", err);
+      if (err.code === 'auth/popup-closed-by-user') {
+        setError("Authorization cancelled by user.");
+      } else {
+        setError("Google identity access denied.");
+      }
     } finally {
       setLoading(false);
     }

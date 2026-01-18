@@ -4,7 +4,7 @@ import { useGame } from './GameContext';
 import { GameTemplate, Clue } from '../types';
 
 const Dashboard: React.FC = () => {
-  const { state, dispatch, exportTemplate, handleLogout } = useGame();
+  const { state, dispatch, exportTemplate, handleLogout, notify } = useGame();
   const [showWizard, setShowWizard] = useState(false);
   const [wizardName, setWizardName] = useState('');
   const [catCount, setCatCount] = useState(5);
@@ -13,7 +13,10 @@ const Dashboard: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleCreateNew = () => {
-    if (!wizardName.trim()) return;
+    if (!wizardName.trim()) {
+      notify('warning', 'Vault Title Required');
+      return;
+    }
     
     const id = `tmpl-${Date.now()}`;
     const safeRowCount = Math.max(1, Math.min(rowCount, 10));
@@ -50,6 +53,7 @@ const Dashboard: React.FC = () => {
     });
 
     dispatch({ type: 'CREATE_TEMPLATE', payload: newTemplate });
+    notify('success', 'New Production Vault Initialized');
     
     // Reset and Close
     setWizardName('');
@@ -67,6 +71,12 @@ const Dashboard: React.FC = () => {
     reader.onload = (event) => {
       try {
         const json = JSON.parse(event.target?.result as string);
+        
+        // Basic Integrity Check
+        if (!json.categories || !json.clues) {
+          throw new Error("Missing structural nodes");
+        }
+
         const imported: GameTemplate = {
           ...json,
           id: `tmpl-import-${Date.now()}`,
@@ -75,8 +85,9 @@ const Dashboard: React.FC = () => {
           ownerId: state.user?.id || 'anonymous'
         };
         dispatch({ type: 'IMPORT_TEMPLATE', payload: imported });
+        notify('success', 'Production Archive Synchronized');
       } catch (err) {
-        alert('Malformed Template JSON');
+        notify('error', 'Malformed Archive: Logic mismatch detected');
       }
     };
     reader.readAsText(file);
@@ -112,7 +123,10 @@ const Dashboard: React.FC = () => {
                    <button onClick={() => exportTemplate(template.id)} className="p-2.5 bg-white/5 rounded-xl text-white/40 hover:text-[#d4af37] transition-all">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                    </button>
-                   <button onClick={() => dispatch({ type: 'DELETE_TEMPLATE', payload: template.id })} className="p-2.5 bg-white/5 rounded-xl text-red-500/30 hover:text-red-500 transition-all">
+                   <button onClick={() => {
+                     dispatch({ type: 'DELETE_TEMPLATE', payload: template.id });
+                     notify('info', 'Archive Record Deleted');
+                   }} className="p-2.5 bg-white/5 rounded-xl text-red-500/30 hover:text-red-500 transition-all">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                    </button>
                 </div>

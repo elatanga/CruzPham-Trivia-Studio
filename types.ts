@@ -2,6 +2,13 @@
 export type QuestionStatus = 'available' | 'selected' | 'answered' | 'void';
 export type SaveStatus = 'idle' | 'saving' | 'saved';
 
+export interface Notification {
+  id: string;
+  type: 'error' | 'success' | 'info' | 'warning';
+  message: string;
+  duration?: number;
+}
+
 export interface Clue {
   id: string;
   categoryId: string;
@@ -50,6 +57,7 @@ export interface GameEvent {
 
 export interface GameSession {
   id: string;
+  ownerId: string;
   templateId: string;
   activeQuestion: { categoryId: string; clueId: string } | null;
   showAnswer: boolean;
@@ -89,6 +97,7 @@ export interface GameState {
   isEditing: boolean;
   soundEnabled: boolean;
   saveStatus: SaveStatus;
+  notifications: Notification[];
 }
 
 export type GameAction =
@@ -119,4 +128,6 @@ export type GameAction =
   | { type: 'REVEAL_ANSWER' }
   | { type: 'ADD_EVENT'; payload: string }
   | { type: 'SET_QUESTION_STATUS'; payload: { clueId: string; status: QuestionStatus; categoryId?: string } }
-  | { type: 'SELECT_QUESTION'; payload: { categoryId: string; clueId: string } | null };
+  | { type: 'SELECT_QUESTION'; payload: { categoryId: string; clueId: string } | null }
+  | { type: 'ADD_NOTIFICATION'; payload: Omit<Notification, 'id'> }
+  | { type: 'REMOVE_NOTIFICATION'; payload: string };

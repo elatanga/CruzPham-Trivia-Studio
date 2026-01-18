@@ -5,7 +5,7 @@ import { generateTriviaBoard, generateClueVisual } from '../services/geminiServi
 import { Clue, Category } from '../types';
 
 const HostEditor: React.FC = () => {
-  const { state, dispatch, playSound } = useGame();
+  const { state, dispatch, playSound, notify } = useGame();
   const [loading, setLoading] = useState(false);
   const [genImgId, setGenImgId] = useState<string | null>(null);
   const [topic, setTopic] = useState('');
@@ -16,8 +16,12 @@ const HostEditor: React.FC = () => {
   if (!state.isHostMode || !template) return null;
 
   const handleGenerate = async () => {
-    if (!topic.trim()) return;
+    if (!topic.trim()) {
+      notify('warning', 'Topic String Missing');
+      return;
+    }
     setLoading(true);
+    notify('info', `Gemini Consulting: ${topic.toUpperCase()}`);
     try {
       const generated = await generateTriviaBoard(topic);
       const categories: Category[] = generated.map(c => ({ id: c.id, title: c.title }));
@@ -32,16 +36,31 @@ const HostEditor: React.FC = () => {
       
       dispatch({ type: 'UPDATE_TEMPLATE', payload: { id: template.id, categories, clues } });
       dispatch({ type: 'ADD_EVENT', payload: `AI Set Reconstruction: ${topic}` });
-    } catch (err) { alert("Generation Error"); } finally { setLoading(false); }
+      notify('success', 'Production Set Ready');
+    } catch (err: any) { 
+      // User-friendly error message from service or fallback
+      const msg = err.message || 'Reconstruction Protocol Failed';
+      notify('error', msg);
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   const handleGenImage = async (clue: Clue) => {
     setGenImgId(clue.id);
+    notify('info', 'Rendering Visual Asset...');
     try {
       const url = await generateClueVisual(clue.prompt);
       dispatch({ type: 'UPDATE_CLUE', payload: { templateId: template.id, clueId: clue.id, data: { mediaUrl: url, mediaType: 'image' } } });
       dispatch({ type: 'ADD_EVENT', payload: `Asset Generated for ${clue.points}` });
-    } catch (err) { alert("Visual Gen Error"); } finally { setGenImgId(null); }
+      notify('success', 'Asset Synchronized');
+    } catch (err: any) { 
+      // User-friendly error message from service or fallback
+      const msg = err.message || 'Visual Engine Offline';
+      notify('error', msg);
+    } finally { 
+      setGenImgId(null); 
+    }
   };
 
   return (

@@ -7,6 +7,7 @@ import HostEditor from './components/HostEditor';
 import Dashboard from './components/Dashboard';
 import Scoreboard from './components/Scoreboard';
 import Auth from './components/Auth';
+import NotificationOverlay from './components/NotificationOverlay';
 
 const Landing: React.FC = () => {
   const { dispatch } = useGame();
@@ -223,6 +224,7 @@ const GameContainer: React.FC = () => {
 const App: React.FC = () => {
   return (
     <GameProvider>
+      <NotificationOverlay />
       <GameContainer />
     </GameProvider>
   );
