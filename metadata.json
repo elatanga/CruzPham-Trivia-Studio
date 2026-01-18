@@ -1,0 +1,8 @@
+{
+  "name": "Cruzpham Trivia Live Studio",
+  "description": "Product of Cruzpham Creators Network. Designed by EL Cruzpham Alpha. A luxury, production-grade Jeopardy-style trivia board designed for TikTok Live creators.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
