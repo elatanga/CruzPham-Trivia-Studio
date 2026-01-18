@@ -1,11 +1,22 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { Category, Clue, CategorySchema } from "../types";
+import { Category, Clue, CategorySchema, TemplateSchema } from "../types";
 import { z } from "zod";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-// Schema for raw Gemini output
+/**
+ * Rate limiting logic: Simple client-side throttle to protect quotas
+ */
+let lastCall = 0;
+const THROTTLE_MS = 2000;
+
+const checkThrottle = () => {
+  const now = Date.now();
+  if (now - lastCall < THROTTLE_MS) throw new Error("Director is busy. Wait a moment.");
+  lastCall = now;
+};
+
 const GeminiBoardSchema = z.array(z.object({
   id: z.string(),
   title: z.string(),
@@ -18,18 +29,15 @@ const GeminiBoardSchema = z.array(z.object({
 }));
 
 export const generateTriviaBoard = async (topic: string): Promise<Category[]> => {
-  const prompt = `You are a professional trivia producer for high-stakes luxury TV game shows.
-    Generate a comprehensive Jeopardy-style trivia board for the topic: "${topic}". 
-    Create exactly 5 unique categories. 
-    Each category must have exactly 5 questions ranging from 100 to 500 points. 
-    Questions must be clever, accurate, and categorized by increasing difficulty.
-    Make the category titles punchy and thematic.
-    Return ONLY JSON.`;
-
+  checkThrottle();
+  
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
-    contents: prompt,
+    contents: `Generate a high-stakes luxury trivia board for: "${topic}". 
+      5 categories, 5 questions each (100-500 points). 
+      Return structured JSON.`,
     config: {
+      systemInstruction: "You are EL CRUZPHAM, the world's most elite trivia director. Your questions are witty, accurate, and challenging. Your formatting is flawless JSON.",
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.ARRAY,
@@ -59,48 +67,38 @@ export const generateTriviaBoard = async (topic: string): Promise<Category[]> =>
   });
 
   try {
-    const text = response.text || '';
-    const rawData = JSON.parse(text.trim());
-    
-    // Validate the raw output
+    const rawData = JSON.parse(response.text || '[]');
     const validatedData = GeminiBoardSchema.parse(rawData);
 
-    return validatedData.map((cat: any, idx: number) => {
-      const categoryId = cat.id || `cat-${idx}-${Date.now()}`;
-      return {
-        id: categoryId,
-        title: cat.title,
-        questions: cat.questions.map((q: any, qIdx: number) => ({
-          id: q.id || `q-${idx}-${qIdx}-${Date.now()}`,
-          categoryId: categoryId,
-          points: q.points,
-          prompt: q.prompt,
-          answer: q.answer,
-          status: 'available'
-        }))
-      };
-    }) as Category[];
+    return validatedData.map((cat, idx) => ({
+      id: cat.id || `c-${idx}-${Date.now()}`,
+      title: cat.title,
+      questions: cat.questions.map((q, qIdx) => ({
+        id: q.id || `q-${idx}-${qIdx}-${Date.now()}`,
+        categoryId: cat.id || '',
+        points: q.points,
+        prompt: q.prompt,
+        answer: q.answer,
+        status: 'available'
+      }))
+    })) as any;
   } catch (err) {
-    console.error("Gemini Validation Error:", err);
-    throw new Error("AI reconstruction failed integrity checks. Please refine the topic.");
+    console.error("Board Integrity Failure:", err);
+    throw new Error("Gemini produced malformed data. Try a different topic.");
   }
 };
 
 export const generateClueVisual = async (prompt: string): Promise<string> => {
-  const imageResponse = await ai.models.generateContent({
+  checkThrottle();
+  const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash-image',
     contents: {
-      parts: [{ text: `A professional game show graphic representing: ${prompt}. Cinematic lighting, gold and black theme, 4k.` }]
+      parts: [{ text: `A cinematic 4K game show graphic for: ${prompt}. Luxury black and gold aesthetics, bokeh background.` }]
     },
-    config: {
-      imageConfig: { aspectRatio: "16:9" }
-    }
+    config: { imageConfig: { aspectRatio: "16:9" } }
   });
 
-  for (const part of imageResponse.candidates[0].content.parts) {
-    if (part.inlineData) {
-      return `data:image/png;base64,${part.inlineData.data}`;
-    }
-  }
-  throw new Error("Visual synthesis failed.");
+  const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
+  if (part?.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
+  throw new Error("Visual Synthesis failed.");
 };

@@ -1,6 +1,6 @@
 {
   "name": "Cruzpham Trivia Live Studio",
-  "description": "Product of Cruzpham Creators Network. Designed by EL Cruzpham Alpha. A luxury, production-grade Jeopardy-style trivia board designed for TikTok Live creators.",
+  "description": "Production-grade Jeopardy-style trivia board with Gemini AI generation, cinematic visuals, and real-time score tracking for TikTok Live. Built for the Cruzpham Creators Network.",
   "requestFramePermissions": [
     "camera",
     "microphone"
