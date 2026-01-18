@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useReducer, useEffect, ReactNode, useCallback } from 'react';
-import { GameState, GameAction, GameTemplate, GameSession, Player, Clue, ViewState } from '../types';
+import { GameState, GameAction, GameTemplate, GameSession, Player, Clue, ViewState, TemplateSchema } from '../types';
 import { INITIAL_BOARD_DATA, SOUND_ASSETS } from '../constants';
 
 const REALTIME_CHANNEL = 'cruzpham_firestore_v8';
@@ -55,11 +55,17 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       newState = { ...state, templates: [action.payload, ...state.templates] };
       break;
     case 'IMPORT_TEMPLATE':
-      if (state.templates.length >= MAX_TEMPLATES) {
-        alert(`Maximum template limit of ${MAX_TEMPLATES} reached.`);
+      try {
+        const validated = TemplateSchema.parse(action.payload);
+        if (state.templates.length >= MAX_TEMPLATES) {
+          alert(`Maximum template limit reached.`);
+          return state;
+        }
+        newState = { ...state, templates: [validated, ...state.templates] };
+      } catch (err) {
+        alert("Template validation failed: Integrity error.");
         return state;
       }
-      newState = { ...state, templates: [action.payload, ...state.templates] };
       break;
     case 'DELETE_TEMPLATE':
       newState = { ...state, templates: state.templates.filter(t => t.id !== action.payload) };
@@ -295,7 +301,6 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     URL.revokeObjectURL(url);
   }, [state.templates]);
 
-  // Global Ticking Logic
   useEffect(() => {
     if (state.gameSession?.timerRunning && state.gameSession?.timer !== null && state.gameSession.timer > 0) {
       const interval = window.setInterval(() => {
@@ -305,7 +310,6 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [state.gameSession?.timerRunning, state.gameSession?.timer]);
 
-  // Alert on timer end
   useEffect(() => {
     if (state.gameSession?.timer === 0 && state.gameSession?.timerRunning === false) {
       playSound('wrong');
@@ -329,9 +333,13 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const saved = localStorage.getItem('cruzpham_production_v8');
     if (saved) {
-      const parsed = JSON.parse(saved);
-      if (parsed.templates) dispatch({ type: 'SYNC_TEMPLATES', payload: parsed.templates });
-      if (parsed.user) dispatch({ type: 'LOGIN', payload: parsed.user });
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.templates) dispatch({ type: 'SYNC_TEMPLATES', payload: parsed.templates });
+        if (parsed.user) dispatch({ type: 'LOGIN', payload: parsed.user });
+      } catch (e) {
+        console.error("Local storage recovery failed");
+      }
     } else {
       const initialClues: Clue[] = INITIAL_BOARD_DATA.flatMap(cat => 
         (cat.questions || []).map(q => ({ ...q, categoryId: cat.id }))

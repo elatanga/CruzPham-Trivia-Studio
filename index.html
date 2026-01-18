@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -31,7 +32,6 @@
         backdrop-filter: blur(12px);
         border: 1px solid rgba(255, 255, 255, 0.1);
       }
-      /* Custom scrollbar */
       ::-webkit-scrollbar {
         width: 6px;
       }
@@ -42,7 +42,6 @@
         background: #d4af37;
         border-radius: 3px;
       }
-      /* Ensure inputs and textareas inherit centering */
       input, textarea, select {
         text-align: center;
       }
@@ -54,6 +53,8 @@
     "react": "https://esm.sh/react@^19.2.3",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "@google/genai": "https://esm.sh/@google/genai@^1.37.0",
+    "zod": "https://esm.sh/zod@^3.23.8",
+    "firebase/": "https://www.gstatic.com/firebasejs/11.0.2/",
     "vite": "https://esm.sh/vite@^7.3.1",
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
   }
@@ -62,6 +63,24 @@
 </head>
   <body>
     <div id="root"></div>
+    <!-- Performance Monitoring initialization -->
+    <script type="module">
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js';
+      import { getPerformance } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-performance.js';
+      
+      // Configuration should be provided via environment injection during CI/CD
+      const firebaseConfig = {
+        apiKey: "REPLACE_WITH_ENV_API_KEY",
+        projectId: "cruzpham-trivia-prod",
+        appId: "REPLACE_WITH_ENV_APP_ID"
+      };
+
+      if (firebaseConfig.apiKey !== "REPLACE_WITH_ENV_API_KEY") {
+        const app = initializeApp(firebaseConfig);
+        const perf = getPerformance(app);
+        console.log("CruzPham Performance Engine: Online");
+      }
+    </script>
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>

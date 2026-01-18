@@ -1,8 +1,21 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { Category, Clue } from "../types";
+import { Category, Clue, CategorySchema } from "../types";
+import { z } from "zod";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+// Schema for raw Gemini output
+const GeminiBoardSchema = z.array(z.object({
+  id: z.string(),
+  title: z.string(),
+  questions: z.array(z.object({
+    id: z.string(),
+    points: z.number(),
+    prompt: z.string(),
+    answer: z.string()
+  }))
+}));
 
 export const generateTriviaBoard = async (topic: string): Promise<Category[]> => {
   const prompt = `You are a professional trivia producer for high-stakes luxury TV game shows.
@@ -10,7 +23,8 @@ export const generateTriviaBoard = async (topic: string): Promise<Category[]> =>
     Create exactly 5 unique categories. 
     Each category must have exactly 5 questions ranging from 100 to 500 points. 
     Questions must be clever, accurate, and categorized by increasing difficulty.
-    Make the category titles punchy and thematic.`;
+    Make the category titles punchy and thematic.
+    Return ONLY JSON.`;
 
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
@@ -32,8 +46,7 @@ export const generateTriviaBoard = async (topic: string): Promise<Category[]> =>
                   id: { type: Type.STRING },
                   points: { type: Type.NUMBER },
                   prompt: { type: Type.STRING },
-                  answer: { type: Type.STRING },
-                  status: { type: Type.STRING }
+                  answer: { type: Type.STRING }
                 },
                 required: ["id", "points", "prompt", "answer"]
               }
@@ -47,34 +60,37 @@ export const generateTriviaBoard = async (topic: string): Promise<Category[]> =>
 
   try {
     const text = response.text || '';
-    const data = JSON.parse(text.trim());
-    return data.map((cat: any, idx: number) => {
+    const rawData = JSON.parse(text.trim());
+    
+    // Validate the raw output
+    const validatedData = GeminiBoardSchema.parse(rawData);
+
+    return validatedData.map((cat: any, idx: number) => {
       const categoryId = cat.id || `cat-${idx}-${Date.now()}`;
       return {
-        ...cat,
         id: categoryId,
+        title: cat.title,
         questions: cat.questions.map((q: any, qIdx: number) => ({
-          ...q,
           id: q.id || `q-${idx}-${qIdx}-${Date.now()}`,
           categoryId: categoryId,
+          points: q.points,
+          prompt: q.prompt,
+          answer: q.answer,
           status: 'available'
         }))
       };
-    });
+    }) as Category[];
   } catch (err) {
-    console.error("Failed to parse Gemini response", err);
-    throw new Error("Invalid board data generated.");
+    console.error("Gemini Validation Error:", err);
+    throw new Error("AI reconstruction failed integrity checks. Please refine the topic.");
   }
 };
 
-/**
- * Generates a thematic image for a specific clue to add "luxury" visual flavor.
- */
 export const generateClueVisual = async (prompt: string): Promise<string> => {
   const imageResponse = await ai.models.generateContent({
     model: 'gemini-2.5-flash-image',
     contents: {
-      parts: [{ text: `A high-quality, professional game show graphic representing: ${prompt}. Cinematic lighting, 4k, gold and black theme.` }]
+      parts: [{ text: `A professional game show graphic representing: ${prompt}. Cinematic lighting, gold and black theme, 4k.` }]
     },
     config: {
       imageConfig: { aspectRatio: "16:9" }
@@ -86,5 +102,5 @@ export const generateClueVisual = async (prompt: string): Promise<string> => {
       return `data:image/png;base64,${part.inlineData.data}`;
     }
   }
-  throw new Error("Image generation failed");
+  throw new Error("Visual synthesis failed.");
 };
