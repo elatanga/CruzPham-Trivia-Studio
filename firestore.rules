@@ -2,31 +2,18 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function signedIn() {
-      return request.auth != null;
-    }
-
-    // USERS: only the owner can read/write their own user doc
-    match /users/{uid} {
-      allow read, create, update: if signedIn() && request.auth.uid == uid;
-    }
-
-    // TEMPLATES: must be owned by the signed-in user
     match /templates/{templateId} {
-      allow create: if signedIn()
-        && request.resource.data.ownerId == request.auth.uid;
-
-      allow read, update, delete: if signedIn()
-        && resource.data.ownerId == request.auth.uid;
+      allow read, write: if request.auth != null
+        && request.auth.uid == resource.data.ownerId;
     }
 
-    // SESSIONS: lock to ownerId (or hostId if you use that)
     match /sessions/{sessionId} {
-      allow create: if signedIn()
-        && request.resource.data.ownerId == request.auth.uid;
+      allow read, write: if request.auth != null;
+    }
 
-      allow read, update, delete: if signedIn()
-        && resource.data.ownerId == request.auth.uid;
+    match /users/{userId} {
+      allow read, write: if request.auth != null
+        && request.auth.uid == userId;
     }
   }
 }

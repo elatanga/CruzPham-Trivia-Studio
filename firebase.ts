@@ -94,23 +94,28 @@ const LOCAL_TEMPLATES = 'cruzpham_local_templates_v2';
 export const subscribeToTemplates = (userId: string, callback: (templates: any[]) => void): Unsubscribe => {
   // Capture current UID precisely to align with Security Rules 'list' requirements
   const currentUid = auth?.currentUser?.uid;
+  // If we have DB, Cloud is enabled, user is not guest, and the requested userId matches authenticated user
   const canUseCloud = db && isCloudEnabled && userId !== 'guest' && currentUid === userId;
 
   if (canUseCloud) {
-    // SECURITY ALIGNMENT: The query filter MUST match the ownerId check in firestore.rules
-    const q = query(
-      collection(db!, 'templates'), 
-      where('ownerId', '==', currentUid)
-    );
+    try {
+      const q = query(
+        collection(db!, 'templates'), 
+        where('ownerId', '==', currentUid)
+      );
 
-    return onSnapshot(q, (snapshot) => {
-      const templates = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-      callback(templates);
-    }, (error) => {
-      // Permission errors (403) are common if index isn't ready or rule check fails
-      console.warn(`Cloud restricted (Code: ${error.code}). Sequence fallback to Local Storage.`, error.message);
-      localTemplatesSync(userId, callback);
-    });
+      return onSnapshot(q, (snapshot) => {
+        const templates = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+        callback(templates);
+      }, (error) => {
+        console.warn(`Cloud restricted (Code: ${error.code}). Sequence fallback to Local Storage.`, error.message);
+        // If cloud subscription fails, switch to local sync
+        localTemplatesSync(userId, callback);
+      });
+    } catch (error) {
+       console.warn("Cloud query construction failed.", error);
+       return localTemplatesSync(userId, callback);
+    }
   } else {
     return localTemplatesSync(userId, callback);
   }
@@ -158,16 +163,20 @@ export const upsertTemplate = async (template: any) => {
   // Attempt Cloud Sync
   if (useCloud) {
     try {
+      const uid = auth!.currentUser!.uid; // guaranteed by guard
       const ref = doc(db!, 'templates', template.id);
-      await setDoc(ref, { 
-        ...template, 
-        ownerId: currentUid, 
-        updatedAt: Date.now() 
-      }, { merge: true });
-      return; // Success, skip local fallback
+      await setDoc(
+        ref,
+        {
+          ...template,
+          ownerId: uid,           // ✅ FORCE ownerId
+          updatedAt: Date.now()
+        },
+        { merge: true }
+      );
+      return; // success, skip local fallback
     } catch (err) {
-      console.warn("Cloud persistence failed. Engaging local storage fallback.", err);
-      // Fall through to local storage
+      console.warn('Cloud persistence failed. Engaging local storage fallback.', err);
     }
   }
 
