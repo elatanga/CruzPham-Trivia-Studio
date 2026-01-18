@@ -24,12 +24,12 @@ const Landing: React.FC = () => {
       {/* Background Ambience */}
       <div className="absolute top-0 right-0 w-[1000px] h-[1000px] bg-[#d4af37]/10 rounded-full blur-[200px] translate-x-1/2 -translate-y-1/2 animate-pulse pointer-events-none"></div>
       
-      {/* Top Spacer to help center content vertically in the flex-1 area */}
-      <div className="h-4 md:h-12 w-full shrink-0"></div>
+      {/* Spacer for vertical rhythm */}
+      <div className="h-4 shrink-0"></div>
 
-      <div className="flex-1 flex flex-col items-center justify-center relative z-10 text-center space-y-8 md:space-y-16 max-w-6xl w-full">
+      <div className="relative z-10 text-center space-y-8 md:space-y-16 max-w-6xl w-full flex flex-col items-center justify-center flex-1">
          <div className="space-y-6 md:space-y-10 text-center flex flex-col items-center">
-            <div className="inline-block px-8 md:px-10 py-3 glass-card rounded-full border border-[#d4af37]/20 mb-4 animate-pulse">
+            <div className="inline-block px-10 py-3 glass-card rounded-full border border-[#d4af37]/20 mb-4 animate-pulse">
                <span className="text-[10px] md:text-xs text-[#d4af37] font-black tracking-[1em] uppercase text-center">CruzPham Studio Sequence v8.0</span>
             </div>
             <h1 className="text-5xl sm:text-7xl md:text-8xl lg:text-[10rem] xl:text-[12rem] font-display font-bold gold-gradient leading-[0.9] tracking-tighter drop-shadow-2xl text-center">
@@ -37,11 +37,11 @@ const Landing: React.FC = () => {
             </h1>
             <p className="text-base md:text-2xl text-white/20 max-w-2xl mx-auto font-light leading-relaxed tracking-tight font-display text-center">
                The definitive <span className="text-[#d4af37] font-bold">TikTok Live</span> engagement suite. <br />
-               <span className="text-white/40 uppercase tracking-[0.3em] text-[10px] md:text-xs font-black text-center">Stage ready. Zero Latency. AI Driven.</span>
+               <span className="text-white/40 uppercase tracking-[0.3em] text-[10px] md:text-xs font-black text-center">Stage ready. Zero Latency</span>
             </p>
          </div>
 
-         <div className="flex flex-col sm:flex-row items-center justify-center gap-6 md:gap-8 w-full max-w-3xl">
+         <div className="flex flex-col sm:flex-row items-center justify-center gap-6 md:gap-8 w-full">
             <button 
               onClick={() => dispatch({ type: 'SET_VIEW', payload: 'auth' })} 
               className="w-full sm:w-auto px-12 md:px-16 py-5 md:py-6 bg-[#d4af37] text-black font-black rounded-2xl md:rounded-3xl hover:scale-105 active:scale-95 shadow-[0_20px_40px_rgba(212,175,55,0.3)] uppercase tracking-[0.4em] text-xs md:text-sm transition-all transform duration-300 text-center"
@@ -96,16 +96,11 @@ const Landing: React.FC = () => {
         </div>
       )}
 
-      {/* Repositioned Footer: Now part of the flex flow to ensure no overlap */}
-      <footer className="w-full py-8 md:py-12 shrink-0 relative z-10 px-4 mt-8">
-        <div className="max-w-2xl mx-auto space-y-2 opacity-20 hover:opacity-40 transition-opacity">
-          <p className="text-[9px] md:text-[11px] text-white uppercase tracking-[0.6em] font-black text-center leading-relaxed">
-            Product of <span className="text-white font-bold">Cruzpham Creators Network</span>
-          </p>
-          <p className="text-[8px] md:text-[9px] text-[#d4af37] uppercase tracking-[0.5em] font-black text-center leading-relaxed">
-            Designed by <span className="text-[#d4af37] font-bold">EL Cruzpham Alpha</span>
-          </p>
-        </div>
+      {/* Footer moved to flow to prevent overlap */}
+      <footer className="w-full py-12 shrink-0 z-10 px-4 mt-12 opacity-40 hover:opacity-100 transition-opacity">
+        <p className="text-[8px] md:text-[10px] text-white/50 uppercase tracking-[0.5em] font-black text-center leading-relaxed">
+          Product of <span className="text-white font-bold">Cruzpham Creators Network</span> <br className="sm:hidden" /> — Designed by <span className="text-[#d4af37] font-bold">EL Cruzpham Alpha</span>
+        </p>
       </footer>
     </div>
   );
@@ -142,7 +137,7 @@ const TemplateEditor: React.FC = () => {
              </div>
            </div>
         </div>
-        <div className="hidden lg:block shrink-0 w-[450px] border-l border-white/5 bg-black/40">
+        <div className="hidden lg:block shrink-0 w-[450px]">
            <HostEditor />
         </div>
       </main>
@@ -157,10 +152,10 @@ const LiveGame: React.FC = () => {
       <div className="flex-1 flex flex-col min-w-0 h-full">
         <header className="h-20 md:h-28 px-4 md:px-12 flex items-center justify-between border-b border-white/5 z-20 shrink-0 glass-card text-center">
           <div className="flex items-center gap-3 md:gap-8 cursor-pointer group justify-center" onClick={() => dispatch({ type: 'SET_VIEW', payload: 'dashboard' })}>
-            <div className="w-10 h-10 md:w-14 md:h-14 bg-[#d4af37] rounded-xl md:rounded-2xl flex items-center justify-center font-black text-black shadow-2xl group-hover:scale-110 transition-transform text-[10px] md:text-base shrink-0">CP</div>
-            <div className="flex flex-col items-start text-left min-w-0">
-               <h1 className="text-xl md:text-4xl font-display font-bold gold-gradient tracking-tighter uppercase leading-none text-center truncate w-full">Live Studio</h1>
-               <span className="text-[6px] md:text-[10px] uppercase tracking-[0.4em] font-black text-white/20 text-center truncate w-full">Frequency Locked</span>
+            <div className="w-10 h-10 md:w-14 md:h-14 bg-[#d4af37] rounded-xl md:rounded-2xl flex items-center justify-center font-black text-black shadow-2xl group-hover:scale-110 transition-transform text-[10px] md:text-base">CP</div>
+            <div className="flex flex-col items-start text-left">
+               <h1 className="text-xl md:text-4xl font-display font-bold gold-gradient tracking-tighter uppercase leading-none text-center">Live Studio</h1>
+               <span className="text-[6px] md:text-[10px] uppercase tracking-[0.4em] font-black text-white/20 text-center">Frequency Locked</span>
             </div>
           </div>
           
@@ -192,7 +187,7 @@ const LiveGame: React.FC = () => {
           <div className="flex-1 relative flex flex-col items-center justify-center min-w-0 text-center p-2 md:p-6 lg:p-12 overflow-hidden">
             <TriviaBoard />
           </div>
-          <div className="hidden sm:block shrink-0 h-full border-l border-white/5">
+          <div className="hidden sm:block shrink-0 h-full">
              <Scoreboard />
           </div>
         </main>
