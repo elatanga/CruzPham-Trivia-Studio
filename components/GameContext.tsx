@@ -43,7 +43,25 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     
     // Game/Template Logic
     case 'LOAD_TEMPLATE':
-      return { ...state, activeTemplate: action.payload, view: 'studio', timer: action.payload.settings.timerDuration || 30, saveStatus: 'saved' };
+      // Inject Daily Double Logic: Randomize 1 card per category
+      const template = action.payload;
+      const categoriesWithDoubles = template.categories.map(cat => {
+          if (cat.questions.length === 0) return cat;
+          const doubleIndex = Math.floor(Math.random() * cat.questions.length);
+          const questions = cat.questions.map((q, idx) => ({
+             ...q,
+             isDailyDouble: idx === doubleIndex
+          }));
+          return { ...cat, questions };
+      });
+
+      return { 
+          ...state, 
+          activeTemplate: { ...template, categories: categoriesWithDoubles }, 
+          view: 'studio', 
+          timer: template.settings.timerDuration || 30, 
+          saveStatus: 'saved' 
+      };
     
     case 'UPDATE_TEMPLATE_SETTINGS':
       if (!state.activeTemplate) return state;
@@ -305,7 +323,23 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (isPlus || isMinus) {
         const activePlayer = state.players.find(p => p.isActive);
-        const step = state.activeTemplate?.settings.step || 100;
+        
+        // Context-aware Step Calculation
+        let step = state.activeTemplate?.settings.step || 100;
+        
+        // If a question is active, use its points (doubled if daily double)
+        if (state.activeQuestionId && state.activeTemplate) {
+            let found = false;
+            for(const cat of state.activeTemplate.categories) {
+                const q = cat.questions.find(q => q.id === state.activeQuestionId);
+                if (q) {
+                    step = q.isDailyDouble ? q.points * 2 : q.points;
+                    found = true;
+                    break;
+                }
+            }
+        }
+
         if (activePlayer) {
            const delta = isPlus ? step : -step;
            dispatch({ type: 'ADJUST_SCORE', payload: { playerId: activePlayer.id, delta } });
@@ -332,7 +366,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
     window.addEventListener('keydown', handleGlobalKeys);
     return () => window.removeEventListener('keydown', handleGlobalKeys);
-  }, [state.players, state.activeTemplate, state.isSoundEnabled]);
+  }, [state.players, state.activeTemplate, state.isSoundEnabled, state.activeQuestionId]);
 
   return (
     <AppContext.Provider value={{ state, dispatch, notify, logout, saveTemplate, log, playSound }}>

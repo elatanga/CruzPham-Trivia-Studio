@@ -16,6 +16,7 @@ export interface Question {
   status: QuestionStatus;
   type?: 'text' | 'image' | 'audio';
   mediaUrl?: string;
+  isDailyDouble?: boolean; // New: Double or Nothing flag
 }
 
 export interface Category {
