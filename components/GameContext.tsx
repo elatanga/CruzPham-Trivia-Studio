@@ -261,27 +261,34 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       }
       
-      if (e.key === 'ArrowUp') {
+      const isPlus = e.key === '+' || e.key === '=' || e.key === 'ArrowUp';
+      const isMinus = e.key === '-' || e.key === '_' || e.key === 'ArrowDown';
+
+      if (isPlus || isMinus) {
         const activePlayer = state.players.find(p => p.isActive);
         const step = state.activeTemplate?.settings.step || 100;
         if (activePlayer) {
-           dispatch({ type: 'ADJUST_SCORE', payload: { playerId: activePlayer.id, delta: step } });
-           playSound('correct');
-           log(`Added ${step} to ${activePlayer.name}`);
-        }
-      }
-      if (e.key === 'ArrowDown') {
-        const activePlayer = state.players.find(p => p.isActive);
-        const step = state.activeTemplate?.settings.step || 100;
-        if (activePlayer) {
-           dispatch({ type: 'ADJUST_SCORE', payload: { playerId: activePlayer.id, delta: -step } });
-           playSound('wrong');
-           log(`Deducted ${step} from ${activePlayer.name}`);
+           const delta = isPlus ? step : -step;
+           dispatch({ type: 'ADJUST_SCORE', payload: { playerId: activePlayer.id, delta } });
+           playSound(isPlus ? 'correct' : 'wrong');
+           log(`${isPlus ? 'Added' : 'Deducted'} ${step} ${isPlus ? 'to' : 'from'} ${activePlayer.name}`);
         }
       }
 
       if (e.code === 'KeyM') {
          dispatch({ type: 'TOGGLE_SOUND' });
+      }
+
+      if (e.code === 'KeyF') {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                console.log(`Error attempting to enable full-screen mode: ${err.message}`);
+            });
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
       }
     };
     window.addEventListener('keydown', handleGlobalKeys);

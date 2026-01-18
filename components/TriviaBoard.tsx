@@ -126,6 +126,23 @@ const TriviaBoard: React.FC = () => {
              </div>
         </div>
 
+        {/* Footer: Controls & Credits */}
+        <div className="h-8 md:h-10 bg-[#0a0a0a] border-t border-white/10 flex items-center justify-between px-4 shrink-0">
+            <div className="flex items-center gap-4 text-[8px] md:text-[9px] text-white/30 font-mono uppercase tracking-wider">
+               <span className="hidden sm:inline">SHORTCUTS:</span>
+               <div className="flex gap-3">
+                   <span title="Select Player">1-8 <span className="text-white/10">PLAYER</span></span>
+                   <span title="Adjust Score">+/- <span className="text-white/10">SCORE</span></span>
+                   <span title="Fullscreen">F <span className="text-white/10">FULL</span></span>
+                   <span title="Reveal Answer" className="hidden lg:inline">SPACE <span className="text-white/10">REVEAL</span></span>
+                   <span title="Close Question" className="hidden lg:inline">ESC <span className="text-white/10">CLOSE</span></span>
+               </div>
+            </div>
+            <div className="text-[8px] md:text-[9px] text-[#d4af37]/40 uppercase tracking-[0.2em] font-black">
+                Powered by CruzPham
+            </div>
+        </div>
+
       </div>
     </div>
   );

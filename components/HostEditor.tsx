@@ -126,15 +126,33 @@ const HostEditor: React.FC = () => {
                <div className="space-y-3">
                   <label className="text-[10px] text-white/50 uppercase tracking-[0.2em] font-bold">Active Column</label>
                   <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide snap-x">
-                      {activeTemplate.categories.map((cat, idx) => (
-                          <button
-                            key={cat.id}
-                            onClick={() => setSelectedCatIndex(idx)}
-                            className={`shrink-0 w-12 h-12 rounded-xl text-[10px] font-bold flex items-center justify-center border transition-all duration-300 snap-center ${selectedCatIndex === idx ? 'bg-[#d4af37] text-black border-[#d4af37] scale-110 shadow-lg' : 'bg-white/5 border-white/10 text-white/30 hover:text-white hover:border-white/30'}`}
-                          >
-                            {idx + 1}
-                          </button>
-                      ))}
+                      {activeTemplate.categories.map((cat, idx) => {
+                          const hasIssues = cat.questions.some(q => 
+                            !q.prompt || q.prompt.trim() === '' || q.prompt === 'Enter Question Prompt...' ||
+                            !q.answer || q.answer.trim() === '' || q.answer === 'Enter Answer...'
+                          );
+                          const hasMedia = cat.questions.some(q => 
+                             (q.type === 'image' || q.type === 'audio') && q.mediaUrl && q.mediaUrl.trim() !== ''
+                          );
+
+                          return (
+                              <button
+                                key={cat.id}
+                                onClick={() => setSelectedCatIndex(idx)}
+                                className={`shrink-0 w-12 h-12 rounded-xl text-[10px] font-bold flex items-center justify-center border transition-all duration-300 snap-center relative ${selectedCatIndex === idx ? 'bg-[#d4af37] text-black border-[#d4af37] scale-110 shadow-lg' : 'bg-white/5 border-white/10 text-white/30 hover:text-white hover:border-white/30'}`}
+                              >
+                                {idx + 1}
+                                {/* Issue Indicator (Red Dot) */}
+                                {hasIssues && (
+                                    <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.5)] border border-black/50 animate-pulse" title="Incomplete Fields Detected" />
+                                )}
+                                {/* Media Indicator (Cyan Dot) */}
+                                {hasMedia && (
+                                    <div className="absolute bottom-1 right-1 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_5px_rgba(34,211,238,0.5)] border border-black/50" title="Contains Media Assets" />
+                                )}
+                              </button>
+                          );
+                      })}
                       {activeTemplate.categories.length < 12 && (
                          <button className="shrink-0 w-12 h-12 rounded-xl border border-white/10 text-white/20 hover:text-[#d4af37] hover:border-[#d4af37] flex items-center justify-center transition-all">
                              +
