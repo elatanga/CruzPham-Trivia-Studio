@@ -7,6 +7,7 @@ import HostEditor from './HostEditor';
 import Dashboard from './Dashboard';
 import Scoreboard from './Scoreboard';
 import Auth from './Auth';
+import NotificationOverlay from './NotificationOverlay';
 
 const Landing: React.FC = () => {
   const { dispatch } = useGame();
@@ -101,8 +102,100 @@ const Landing: React.FC = () => {
   );
 };
 
+const Studio: React.FC = () => {
+  const { state, dispatch, saveTemplate } = useGame();
+  
+  return (
+    <div className="relative h-screen flex bg-[#010101] overflow-hidden text-center">
+      {/* Container for the Main Stage and Header */}
+      <div className="flex-1 flex flex-col min-w-0 h-full">
+        <header className="h-16 md:h-20 px-4 md:px-8 flex items-center justify-between border-b border-white/5 z-20 shrink-0 glass-card text-center">
+          <div className="flex items-center gap-3 md:gap-6 cursor-pointer group justify-center" onClick={() => { saveTemplate(); dispatch({ type: 'SET_VIEW', payload: 'dashboard' }); }}>
+            <div className="w-10 h-10 bg-[#d4af37] rounded-xl flex items-center justify-center font-black text-black shadow-2xl group-hover:scale-110 transition-transform text-[10px]">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
+            </div>
+            <div className="flex flex-col items-start text-left">
+               <h1 className="text-lg md:text-2xl font-display font-bold gold-gradient tracking-tighter uppercase leading-none text-center">
+                 {state.activeTemplate?.name || 'Untitled'}
+               </h1>
+               <span className="text-[6px] md:text-[9px] uppercase tracking-[0.4em] font-black text-white/20 text-center">Production Mode</span>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4 justify-center">
+            <div className="flex bg-white/[0.03] p-1 rounded-2xl border border-white/10 shrink-0">
+               <button 
+                  onClick={() => dispatch({ type: 'TOGGLE_EDITING' })}
+                  className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all duration-300 text-center ${state.isEditing ? 'bg-[#d4af37] text-black shadow-2xl' : 'text-white/30 hover:text-white'}`}
+               >
+                  Director
+               </button>
+               <button 
+                  onClick={() => dispatch({ type: 'TOGGLE_LIVE_MODE' })}
+                  className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all duration-300 text-center ${state.isLiveMode ? 'bg-red-600 text-white shadow-2xl animate-pulse' : 'text-white/30 hover:text-white'}`}
+               >
+                  Live Feed
+               </button>
+            </div>
+          </div>
+        </header>
+
+        <main className="flex-1 flex overflow-hidden min-h-0 relative text-center">
+          {/* Central Stage Area */}
+          <div className={`flex-1 relative flex flex-col items-center justify-center min-w-0 text-center p-2 md:p-6 transition-all duration-500 ${state.isLiveMode ? 'bg-black' : ''}`}>
+            <TriviaBoard />
+          </div>
+          
+          {/* Simplified Scoreboard Area (Placeholder for now) */}
+          <div className="hidden lg:block shrink-0 h-full w-[250px] border-l border-white/5 bg-black/20">
+             <Scoreboard />
+          </div>
+        </main>
+      </div>
+
+      {/* Director Control Sidebar */}
+      {state.isEditing && (
+        <div className="shrink-0 w-[350px] md:w-[400px] h-full z-50 shadow-[-40px_0_80px_rgba(0,0,0,0.5)] bg-black/40 backdrop-blur-2xl animate-in slide-in-from-right duration-300">
+           <HostEditor />
+        </div>
+      )}
+
+      {/* Question Overlay */}
+      {state.activeQuestionId && <QuestionView />}
+    </div>
+  );
+};
+
+const AppContent: React.FC = () => {
+  const { state } = useGame();
+
+  if (state.loading) {
+    return (
+      <div className="h-screen w-screen bg-[#030303] flex items-center justify-center">
+        <div className="text-center space-y-4 animate-pulse">
+           <div className="w-12 h-12 border-2 border-[#d4af37] border-t-transparent rounded-full animate-spin mx-auto"></div>
+           <p className="text-[9px] text-[#d4af37] uppercase tracking-[0.4em] font-black">Loading Sequence</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#030303] text-[#e5e5e5] flex flex-col font-sans overflow-x-hidden relative">
+      <NotificationOverlay />
+      {state.view === 'landing' && <Landing />}
+      {state.view === 'auth' && <Auth />}
+      {state.view === 'dashboard' && <Dashboard />}
+      {state.view === 'studio' && <Studio />}
+      {state.view === 'template/edit' && <TemplateEditor />}
+      {(state.view === 'game/live' || state.view === 'game/question' || state.view === 'game/control') && <LiveGame />}
+    </div>
+  );
+};
+
+// Definitions for TemplateEditor and LiveGame were moved to be accessible by AppContent
 const TemplateEditor: React.FC = () => {
-  const { state, dispatch } = useGame();
+  const { dispatch } = useGame();
   return (
     <div className="h-screen bg-[#010101] flex flex-col overflow-hidden text-center">
       <header className="h-20 md:h-24 px-6 md:px-12 flex items-center justify-between border-b border-white/5 shrink-0 glass-card text-center z-20">
@@ -173,8 +266,8 @@ const LiveGame: React.FC = () => {
                </button>
             </div>
             <button 
-              onClick={() => dispatch({ type: 'TOGGLE_HOST_MODE' })}
-              className={`p-3 md:p-4 rounded-xl md:rounded-2xl border-2 transition-all duration-300 text-center shrink-0 ${state.isHostMode ? 'bg-[#d4af37]/10 border-[#d4af37]/40 text-[#d4af37] scale-105 shadow-2xl' : 'border-white/5 text-white/20 hover:text-white'}`}
+              onClick={() => dispatch({ type: 'TOGGLE_EDITING' })}
+              className={`p-3 md:p-4 rounded-xl md:rounded-2xl border-2 transition-all duration-300 text-center shrink-0 ${state.isEditing ? 'bg-[#d4af37]/10 border-[#d4af37]/40 text-[#d4af37] scale-105 shadow-2xl' : 'border-white/5 text-white/20 hover:text-white'}`}
             >
               <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
             </button>
@@ -195,7 +288,7 @@ const LiveGame: React.FC = () => {
       </div>
 
       {/* Director Control Sidebar: Flexibly pushed to the right when active */}
-      {state.isHostMode && (
+      {state.isEditing && (
         <div className="shrink-0 w-[350px] md:w-[450px] h-full z-50 border-l border-white/5 shadow-[-40px_0_80px_rgba(0,0,0,0.5)] bg-black/40 backdrop-blur-2xl">
            <HostEditor />
         </div>
@@ -204,31 +297,15 @@ const LiveGame: React.FC = () => {
       {/* Floating Scoreboard for mobile if needed, or keeping standard. 
           The current layout handles Scoreboard as a right-side element in main. */}
 
-      {state.view === 'game/question' && <QuestionView />}
+      {(state.view === 'game/question' || state.activeQuestionId) && <QuestionView />}
     </div>
   );
-};
-
-const GameContainer: React.FC = () => {
-  const { state } = useGame();
-
-  switch(state.view) {
-    case 'marketing/landing': return <Landing />;
-    case 'auth': return <Auth />;
-    case 'dashboard': return <Dashboard />;
-    case 'template/edit': return <TemplateEditor />;
-    case 'game/live':
-    case 'game/question':
-    case 'game/control':
-      return <LiveGame />;
-    default: return <Landing />;
-  }
 };
 
 const App: React.FC = () => {
   return (
     <GameProvider>
-      <GameContainer />
+      <AppContent />
     </GameProvider>
   );
 };

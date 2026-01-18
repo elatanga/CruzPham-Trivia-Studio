@@ -1,6 +1,18 @@
-
-import firebase from 'firebase/compat/app';
-import { getFirestore, collection, query, where, onSnapshot, doc, setDoc, getDoc, Firestore, Unsubscribe } from 'firebase/firestore';
+import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { 
+  getFirestore, 
+  collection, 
+  query, 
+  where, 
+  onSnapshot, 
+  doc, 
+  setDoc, 
+  getDoc, 
+  Firestore, 
+  Unsubscribe,
+  orderBy,
+  limit
+} from 'firebase/firestore';
 import { 
   getAuth, 
   GoogleAuthProvider, 
@@ -14,6 +26,7 @@ import {
   User as FirebaseUser, 
   Auth 
 } from 'firebase/auth';
+import { validateTemplate } from './utils/validators';
 
 // Validated Production Credentials
 const firebaseConfig = {
@@ -26,7 +39,7 @@ const firebaseConfig = {
   measurementId: "G-F4G0T4YYY9"
 };
 
-let app: any = null;
+let app: FirebaseApp | undefined;
 let db: Firestore | null = null;
 let auth: Auth | null = null;
 
@@ -35,17 +48,17 @@ export const isCloudEnabled = !!firebaseConfig.apiKey && firebaseConfig.apiKey.s
 
 try {
   // Ensure we don't initialize duplicate apps
-  if (!firebase.apps.length) {
-    if (isCloudEnabled) {
-      app = firebase.initializeApp(firebaseConfig);
+  if (isCloudEnabled) {
+    if (getApps().length === 0) {
+      app = initializeApp(firebaseConfig);
+    } else {
+      app = getApp();
     }
-  } else {
-    app = firebase.apps[0];
-  }
 
-  if (app) {
-    db = getFirestore(app);
-    auth = getAuth(app);
+    if (app) {
+      db = getFirestore(app);
+      auth = getAuth(app);
+    }
   }
 } catch (error) {
   console.error("CruzPham Core: Infrastructure Handshake Error", error);
@@ -81,8 +94,9 @@ export const syncUserRecord = async (user: { id: string; username: string; email
       lastLogin: Date.now(),
       version: '2.0-secure'
     }, { merge: true });
-  } catch (e) {
-    console.warn("User sync skipped: persistence check failed.");
+  } catch (e: any) {
+    // Log the specific error to aid debugging (likely permission-denied or network)
+    console.warn(`User sync skipped: ${e.message || 'Persistence check failed'}`);
   }
 };
 
@@ -99,16 +113,20 @@ export const subscribeToTemplates = (userId: string, callback: (templates: any[]
 
   if (canUseCloud) {
     try {
+      // Use orderBy and limit for performance and governance
+      // Requires Firestore Composite Index: ownerId ASC, updatedAt DESC
       const q = query(
         collection(db!, 'templates'), 
-        where('ownerId', '==', currentUid)
+        where('ownerId', '==', currentUid),
+        orderBy('updatedAt', 'desc'),
+        limit(20) 
       );
 
       return onSnapshot(q, (snapshot) => {
         const templates = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
         callback(templates);
       }, (error) => {
-        console.warn(`Cloud restricted (Code: ${error.code}). Sequence fallback to Local Storage.`, error.message);
+        console.warn(`Cloud restricted (Code: ${error.code}). Sequence fallback to Local Storage.`);
         // If cloud subscription fails, switch to local sync
         localTemplatesSync(userId, callback);
       });
@@ -137,7 +155,7 @@ export const subscribeToGameSession = (sessionId: string, callback: (session: an
     return onSnapshot(doc(db, 'sessions', sessionId), (doc) => {
       if (doc.exists()) callback(doc.data());
     }, (error) => {
-      console.warn(`Session node restriction (${error.code}). Local Node active.`, error.message);
+      console.warn(`Session node restriction (${error.code}). Local Node active.`);
       localSessionSync(sessionId, callback);
     });
   } else {
@@ -156,24 +174,33 @@ const localSessionSync = (sessionId: string, callback: (session: any) => void): 
 }
 
 export const upsertTemplate = async (template: any) => {
+  // 1. Zod Validation
+  let validatedTemplate;
+  try {
+    validatedTemplate = validateTemplate(template);
+  } catch (err) {
+    console.error("Template validation failed:", err);
+    throw new Error("Invalid template data");
+  }
+
+  // 2. Audit Fields
   const currentUid = auth?.currentUser?.uid;
-  const isAuthorized = currentUid && currentUid === template.ownerId;
-  const useCloud = db && isCloudEnabled && isAuthorized && template.ownerId !== 'guest';
+  const timestamp = Date.now();
+  const finalTemplate = {
+    ...validatedTemplate,
+    updatedAt: timestamp,
+    updatedBy: currentUid || 'system',
+    createdAt: template.createdAt || timestamp // Preserve original creation time
+  };
+
+  const isAuthorized = currentUid && currentUid === finalTemplate.ownerId;
+  const useCloud = db && isCloudEnabled && isAuthorized && finalTemplate.ownerId !== 'guest';
 
   // Attempt Cloud Sync
   if (useCloud) {
     try {
-      const uid = auth!.currentUser!.uid; // guaranteed by guard
-      const ref = doc(db!, 'templates', template.id);
-      await setDoc(
-        ref,
-        {
-          ...template,
-          ownerId: uid,           // ✅ FORCE ownerId
-          updatedAt: Date.now()
-        },
-        { merge: true }
-      );
+      const ref = doc(db!, 'templates', finalTemplate.id);
+      await setDoc(ref, finalTemplate, { merge: true });
       return; // success, skip local fallback
     } catch (err) {
       console.warn('Cloud persistence failed. Engaging local storage fallback.', err);
@@ -184,9 +211,9 @@ export const upsertTemplate = async (template: any) => {
   try {
     const stored = localStorage.getItem(LOCAL_TEMPLATES);
     let data = stored ? JSON.parse(stored) : [];
-    const idx = data.findIndex((t: any) => t.id === template.id);
-    if (idx > -1) data[idx] = { ...data[idx], ...template, updatedAt: Date.now() };
-    else data.push({ ...template, updatedAt: Date.now() });
+    const idx = data.findIndex((t: any) => t.id === finalTemplate.id);
+    if (idx > -1) data[idx] = { ...data[idx], ...finalTemplate };
+    else data.push(finalTemplate);
     localStorage.setItem(LOCAL_TEMPLATES, JSON.stringify(data));
     window.dispatchEvent(new Event('storage'));
   } catch (e) {
@@ -196,13 +223,21 @@ export const upsertTemplate = async (template: any) => {
 
 export const upsertSession = async (sessionId: string, data: any) => {
   const currentUid = auth?.currentUser?.uid;
-  const isAuthorized = currentUid && (data.ownerId === currentUid);
-  const useCloud = db && isCloudEnabled && isAuthorized && data.ownerId !== 'guest';
+  
+  // Audit Fields for Session
+  const finalSession = {
+    ...data,
+    updatedAt: Date.now(),
+    updatedBy: currentUid || 'system'
+  };
+
+  const isAuthorized = currentUid && (finalSession.ownerId === currentUid);
+  const useCloud = db && isCloudEnabled && isAuthorized && finalSession.ownerId !== 'guest';
 
   if (useCloud) {
     try {
       const ref = doc(db!, 'sessions', sessionId);
-      await setDoc(ref, { ...data, updatedAt: Date.now() }, { merge: true });
+      await setDoc(ref, finalSession, { merge: true });
       return;
     } catch (err) {
        console.warn("Cloud session sync failed. Engaging local storage fallback.", err);
@@ -210,6 +245,6 @@ export const upsertSession = async (sessionId: string, data: any) => {
   }
   
   // Local Fallback
-  localStorage.setItem(`session_${sessionId}`, JSON.stringify({ ...data, updatedAt: Date.now() }));
+  localStorage.setItem(`session_${sessionId}`, JSON.stringify(finalSession));
   window.dispatchEvent(new Event('storage'));
 };
