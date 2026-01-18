@@ -86,51 +86,51 @@ const QuestionView: React.FC = () => {
   if (!active || !session || !question) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black animate-in fade-in zoom-in duration-700 backdrop-blur-3xl overflow-hidden p-8 md:p-24">
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black animate-in fade-in zoom-in duration-700 backdrop-blur-3xl overflow-hidden p-8 md:p-24 text-center">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(212,175,55,0.06)_0%,transparent_70%)] pointer-events-none animate-pulse"></div>
 
-      <div className="w-full max-w-7xl h-full flex flex-col justify-between items-center relative z-10 py-12 md:py-20">
+      <div className="w-full max-w-7xl h-full flex flex-col justify-between items-center relative z-10 py-12 md:py-20 text-center">
         
-        <div className="w-full text-center space-y-4 md:space-y-8">
-          <p className="text-xl md:text-3xl font-display text-[#d4af37] tracking-[0.6em] uppercase font-black italic opacity-40">
+        <div className="w-full text-center space-y-4 md:space-y-8 flex flex-col items-center">
+          <p className="text-xl md:text-3xl font-display text-[#d4af37] tracking-[0.6em] uppercase font-black italic opacity-40 text-center w-full">
              {category?.title} — {question.points}
           </p>
           <div className="h-px w-32 mx-auto bg-gradient-to-r from-transparent via-[#d4af37] to-transparent"></div>
         </div>
 
-        <div className="flex-1 flex flex-col justify-center items-center w-full space-y-12">
+        <div className="flex-1 flex flex-col justify-center items-center w-full space-y-12 text-center">
           {question.mediaUrl && (
             <div className="w-full max-w-3xl aspect-video rounded-[3rem] overflow-hidden shadow-2xl border-2 border-[#d4af37]/20 flex-shrink-0">
               <img src={question.mediaUrl} alt="clue" className="w-full h-full object-cover" />
             </div>
           )}
 
-          <div className="w-full text-center px-4">
-             <h1 className="font-display font-black leading-tight text-white drop-shadow-2xl tracking-tight"
+          <div className="w-full text-center px-4 flex flex-col items-center justify-center">
+             <h1 className="font-display font-black leading-tight text-white drop-shadow-2xl tracking-tight text-center"
                  style={{ fontSize: 'clamp(2rem, 9vh, 8rem)' }}>
                {question.prompt}
              </h1>
           </div>
         </div>
 
-        <div className="w-full max-w-4xl flex flex-col items-center space-y-12 shrink-0">
-          <div className={`transition-all duration-1000 transform ${session.showAnswer ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20 pointer-events-none'}`}>
-            <div className="px-16 md:px-24 py-8 md:py-12 glass-card rounded-[4rem] border-2 border-[#d4af37]/30 shadow-[0_0_100px_rgba(212,175,55,0.1)] bg-black/80 text-center">
-              <p className="text-[10px] text-[#d4af37]/50 uppercase tracking-[1em] mb-4 font-black">Protocol Solution</p>
-              <p className="font-display font-black gold-gradient drop-shadow-2xl tracking-tighter" 
+        <div className="w-full max-w-4xl flex flex-col items-center space-y-12 shrink-0 text-center">
+          <div className={`transition-all duration-1000 transform flex flex-col items-center ${session.showAnswer ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20 pointer-events-none'}`}>
+            <div className="px-16 md:px-24 py-8 md:py-12 glass-card rounded-[4rem] border-2 border-[#d4af37]/30 shadow-[0_0_100px_rgba(212,175,55,0.1)] bg-black/80 text-center flex flex-col items-center">
+              <p className="text-[10px] text-[#d4af37]/50 uppercase tracking-[1em] mb-4 font-black text-center">Protocol Solution</p>
+              <p className="font-display font-black gold-gradient drop-shadow-2xl tracking-tighter text-center" 
                  style={{ fontSize: 'clamp(2rem, 7vh, 6rem)' }}>
                 {question.answer}
               </p>
             </div>
           </div>
 
-          <div className="flex flex-col items-center gap-8 w-full">
+          <div className="flex flex-col items-center gap-8 w-full text-center">
             {session.timer !== null && (
-              <div className="flex flex-col items-center gap-4">
-                 <span className={`text-8xl md:text-[10rem] font-display font-black leading-none ${session.timer <= 5 ? 'text-red-500 animate-pulse' : 'text-[#d4af37]'}`}>
+              <div className="flex flex-col items-center gap-4 text-center">
+                 <span className={`text-8xl md:text-[10rem] font-display font-black leading-none text-center ${session.timer <= 5 ? 'text-red-500 animate-pulse' : 'text-[#d4af37]'}`}>
                    {session.timer}
                  </span>
-                 <div className="w-64 h-2 bg-white/10 rounded-full overflow-hidden">
+                 <div className="w-64 h-2 bg-white/10 rounded-full overflow-hidden mx-auto">
                     <div 
                       className={`h-full transition-all duration-1000 ease-linear ${session.timer <= 5 ? 'bg-red-500' : 'bg-[#d4af37]'}`}
                       style={{ width: `${(session.timer / session.defaultTimerDuration) * 100}%` }}
@@ -139,20 +139,20 @@ const QuestionView: React.FC = () => {
               </div>
             )}
 
-            <div className="flex gap-10">
+            <div className="flex flex-wrap gap-10 justify-center items-center w-full">
                {!session.showAnswer ? (
                   <button onClick={() => { dispatch({ type: 'REVEAL_ANSWER' }); playSound('reveal'); }} 
-                          className="px-12 py-6 border border-[#d4af37]/40 text-[#d4af37] font-black rounded-3xl hover:bg-[#d4af37] hover:text-black transition-all uppercase tracking-[0.4em] text-xs shadow-xl active:scale-95">
+                          className="px-12 py-6 border border-[#d4af37]/40 text-[#d4af37] font-black rounded-3xl hover:bg-[#d4af37] hover:text-black transition-all uppercase tracking-[0.4em] text-xs shadow-xl active:scale-95 text-center">
                     Reveal Answer (Space)
                   </button>
                ) : (
-                  <div className="flex gap-6">
+                  <div className="flex flex-wrap gap-6 justify-center">
                     <button onClick={() => dispatch({ type: 'SET_QUESTION_STATUS', payload: { clueId: active.clueId, status: 'answered' } })}
-                            className="px-12 py-6 bg-[#d4af37] text-black font-black rounded-3xl hover:scale-105 transition-all text-xs uppercase tracking-[0.3em] shadow-2xl">
+                            className="px-12 py-6 bg-[#d4af37] text-black font-black rounded-3xl hover:scale-105 transition-all text-xs uppercase tracking-[0.3em] shadow-2xl text-center">
                       Complete (Enter)
                     </button>
                     <button onClick={() => dispatch({ type: 'SELECT_QUESTION', payload: null })}
-                            className="px-8 py-6 border border-white/10 text-white/30 rounded-3xl hover:text-white transition-all text-[10px] uppercase tracking-[0.2em]">
+                            className="px-8 py-6 border border-white/10 text-white/30 rounded-3xl hover:text-white transition-all text-[10px] uppercase tracking-[0.2em] text-center">
                       Dismiss (Esc)
                     </button>
                   </div>

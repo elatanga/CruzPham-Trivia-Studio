@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { GameProvider, useGame } from './components/GameContext';
 import TriviaBoard from './components/TriviaBoard';
 import QuestionView from './components/QuestionView';
@@ -10,17 +10,26 @@ import Auth from './components/Auth';
 
 const Landing: React.FC = () => {
   const { dispatch } = useGame();
+  const [showProtocols, setShowProtocols] = useState(false);
+
+  const protocols = [
+    { title: 'AI RECONSTRUCTION', desc: 'Harness Gemini 3.0 to generate thematic trivia boards in seconds.' },
+    { title: 'LIVE BROADCAST', desc: 'Zero-latency UI optimized for TikTok Live vertical and horizontal formats.' },
+    { title: 'DIRECTOR CONTROL', desc: 'Manage scores, timers, and game flow from a unified command center.' },
+    { title: 'LUXURY ASSETS', desc: 'Cinematic visuals and high-fidelity audio cues for premium engagement.' }
+  ];
+
   return (
     <div className="h-screen bg-[#030303] flex flex-col items-center justify-center p-8 relative overflow-hidden">
       <div className="absolute top-0 right-0 w-[1000px] h-[1000px] bg-[#d4af37]/10 rounded-full blur-[200px] translate-x-1/2 -translate-y-1/2 animate-pulse"></div>
       
-      <div className="relative z-10 text-center space-y-12 md:space-y-20 max-w-6xl">
+      <div className="relative z-10 text-center space-y-12 md:space-y-24 max-w-6xl">
          <div className="space-y-6 md:space-y-10">
             <div className="inline-block px-10 py-4 glass-card rounded-full border border-[#d4af37]/20 mb-4 animate-pulse">
                <span className="text-xs text-[#d4af37] font-black tracking-[1em] uppercase">CruzPham Studio Sequence v8.0</span>
             </div>
-            <h1 className="text-5xl md:text-[10rem] font-display font-bold gold-gradient leading-[0.9] tracking-tighter drop-shadow-2xl">
-               Cruzpham Trivia<br /><span className="text-white/90">Live Studio.</span>
+            <h1 className="text-6xl md:text-[14rem] font-display font-bold gold-gradient leading-[0.8] tracking-tighter drop-shadow-2xl">
+               CruzPham<br /><span className="text-white/90">Trivia.</span>
             </h1>
             <p className="text-lg md:text-3xl text-white/20 max-w-3xl mx-auto font-light leading-relaxed tracking-tight font-display">
                The definitive <span className="text-[#d4af37] font-bold">TikTok Live</span> engagement suite. <br />
@@ -29,10 +38,60 @@ const Landing: React.FC = () => {
          </div>
 
          <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-10">
-            <button onClick={() => dispatch({ type: 'SET_VIEW', payload: 'auth' })} className="px-16 md:px-20 py-6 md:py-8 bg-[#d4af37] text-black font-black rounded-3xl hover:scale-110 active:scale-95 shadow-[0_40px_80px_rgba(212,175,55,0.4)] uppercase tracking-[0.4em] text-sm transition-all transform duration-500">Initialize Module</button>
-            <button className="px-16 md:px-20 py-6 md:py-8 border-2 border-white/5 text-white/30 font-black rounded-3xl hover:bg-white/5 hover:text-white transition-all uppercase tracking-[0.3em] text-sm">Review Protocols</button>
+            <button 
+              onClick={() => dispatch({ type: 'SET_VIEW', payload: 'auth' })} 
+              className="px-16 md:px-20 py-6 md:py-8 bg-[#d4af37] text-black font-black rounded-3xl hover:scale-110 active:scale-95 shadow-[0_40px_80px_rgba(212,175,55,0.4)] uppercase tracking-[0.4em] text-sm transition-all transform duration-500"
+            >
+              ENTER STUDIO
+            </button>
+            <button 
+              onClick={() => setShowProtocols(true)}
+              className="px-16 md:px-20 py-6 md:py-8 border-2 border-white/5 text-white/30 font-black rounded-3xl hover:bg-white/5 hover:text-white transition-all uppercase tracking-[0.3em] text-sm"
+            >
+              Review Protocols
+            </button>
          </div>
       </div>
+
+      {/* Protocols Modal */}
+      {showProtocols && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-3xl p-4 animate-in fade-in duration-500">
+           <div className="max-w-4xl w-full glass-card p-12 md:p-20 rounded-[4rem] border border-[#d4af37]/20 shadow-2xl relative">
+              <button 
+                onClick={() => setShowProtocols(false)}
+                className="absolute top-10 right-10 text-white/20 hover:text-white transition-all"
+              >
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+              
+              <div className="text-center mb-16 space-y-4">
+                 <p className="text-[10px] text-[#d4af37] font-black uppercase tracking-[1em]">System Overview</p>
+                 <h2 className="text-4xl md:text-6xl font-display font-bold text-white">Production Protocols</h2>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                 {protocols.map((p, i) => (
+                   <div key={i} className="space-y-4">
+                      <div className="flex items-center gap-4">
+                         <span className="text-[#d4af37] font-black text-xl font-display">0{i+1}</span>
+                         <h3 className="text-xs font-black text-white uppercase tracking-[0.3em]">{p.title}</h3>
+                      </div>
+                      <p className="text-white/40 text-sm leading-relaxed font-light">{p.desc}</p>
+                   </div>
+                 ))}
+              </div>
+
+              <div className="mt-20 text-center">
+                 <button 
+                   onClick={() => setShowProtocols(false)}
+                   className="px-12 py-5 bg-white/5 border border-white/10 text-white font-black rounded-2xl uppercase text-[10px] tracking-[0.4em] hover:bg-white/10 transition-all"
+                 >
+                   Acknowledge
+                 </button>
+              </div>
+           </div>
+        </div>
+      )}
 
       <footer className="absolute bottom-10 left-0 right-0 text-center z-10">
         <p className="text-[10px] text-white/10 uppercase tracking-[0.5em] font-black">
@@ -88,8 +147,8 @@ const LiveGame: React.FC = () => {
         <div className="flex items-center gap-4 md:gap-8 cursor-pointer group" onClick={() => dispatch({ type: 'SET_VIEW', payload: 'dashboard' })}>
           <div className="w-10 h-10 md:w-14 md:h-14 bg-[#d4af37] rounded-xl md:rounded-2xl flex items-center justify-center font-black text-black shadow-2xl group-hover:scale-110 transition-transform text-xs md:text-base">CP</div>
           <div className="flex flex-col">
-             <h1 className="text-xl md:text-3xl font-display font-bold gold-gradient tracking-tighter uppercase leading-none">Cruzpham Trivia</h1>
-             <span className="text-[8px] md:text-[9px] uppercase tracking-[0.3em] font-black text-white/40">Live Studio</span>
+             <h1 className="text-2xl md:text-4xl font-display font-bold gold-gradient tracking-tighter uppercase leading-none">Live Studio</h1>
+             <span className="text-[8px] md:text-[10px] uppercase tracking-[0.4em] font-black text-white/20">Frequency Locked</span>
           </div>
         </div>
         
