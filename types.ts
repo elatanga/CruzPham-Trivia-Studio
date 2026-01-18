@@ -1,45 +1,39 @@
 
-import { z } from 'zod';
-
 export type QuestionStatus = 'available' | 'selected' | 'answered' | 'void';
 export type SaveStatus = 'idle' | 'saving' | 'saved';
 
-// Zod Schemas for Validation
-export const ClueSchema = z.object({
-  id: z.string(),
-  categoryId: z.string(),
-  points: z.number().min(0),
-  prompt: z.string().min(1, "Prompt cannot be empty"),
-  answer: z.string().min(1, "Answer cannot be empty"),
-  mediaUrl: z.string().optional(),
-  mediaType: z.enum(['image', 'audio']).optional(),
-  status: z.enum(['available', 'selected', 'answered', 'void']).default('available'),
-});
+export interface Clue {
+  id: string;
+  categoryId: string;
+  points: number;
+  prompt: string;
+  answer: string;
+  mediaUrl?: string;
+  mediaType?: 'image' | 'audio';
+  status: QuestionStatus;
+}
 
-export const CategorySchema = z.object({
-  id: z.string(),
-  title: z.string().min(1, "Category title required"),
-});
+export interface Category {
+  id: string;
+  title: string;
+  questions?: Clue[];
+}
 
-export const TemplateSchema = z.object({
-  id: z.string(),
-  ownerId: z.string(),
-  name: z.string().min(1, "Template name required"),
-  createdAt: z.number(),
-  updatedAt: z.number(),
-  version: z.string().default('2.0'),
-  categories: z.array(CategorySchema).min(1),
-  clues: z.array(ClueSchema),
-  pointsConfig: z.object({
-    min: z.number(),
-    max: z.number(),
-    step: z.number(),
-  }),
-});
-
-export type Clue = z.infer<typeof ClueSchema>;
-export type Category = z.infer<typeof CategorySchema>;
-export type GameTemplate = z.infer<typeof TemplateSchema>;
+export interface GameTemplate {
+  id: string;
+  ownerId: string;
+  name: string;
+  createdAt: number;
+  updatedAt: number;
+  version: string;
+  categories: Category[];
+  clues: Clue[];
+  pointsConfig: {
+    min: number;
+    max: number;
+    step: number;
+  };
+}
 
 export interface Player {
   id: string;

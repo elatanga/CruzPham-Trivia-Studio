@@ -1,9 +1,10 @@
+
 import React, { useState, useRef } from 'react';
 import { useGame } from './GameContext';
 import { GameTemplate, Clue } from '../types';
 
 const Dashboard: React.FC = () => {
-  const { state, dispatch, exportTemplate } = useGame();
+  const { state, dispatch, exportTemplate, handleLogout } = useGame();
   const [showWizard, setShowWizard] = useState(false);
   const [wizardName, setWizardName] = useState('');
   const [catCount, setCatCount] = useState(5);
@@ -70,7 +71,8 @@ const Dashboard: React.FC = () => {
           ...json,
           id: `tmpl-import-${Date.now()}`,
           createdAt: Date.now(),
-          updatedAt: Date.now()
+          updatedAt: Date.now(),
+          ownerId: state.user?.id || 'anonymous'
         };
         dispatch({ type: 'IMPORT_TEMPLATE', payload: imported });
       } catch (err) {
@@ -97,7 +99,7 @@ const Dashboard: React.FC = () => {
            <input type="file" className="hidden" ref={fileInputRef} accept=".json" onChange={handleImport} />
            <button onClick={() => fileInputRef.current?.click()} className="px-6 py-3 bg-white/5 border border-white/10 text-white font-bold rounded-xl hover:bg-white/10 transition-all uppercase tracking-widest text-[9px] text-center">Import Archive</button>
            <button onClick={() => setShowWizard(true)} className="px-8 py-3 bg-[#d4af37] text-black font-black rounded-xl hover:bg-white transition-all transform hover:scale-105 shadow-xl uppercase tracking-widest text-[9px] text-center">New Production</button>
-           <button onClick={() => dispatch({ type: 'LOGOUT' })} className="px-6 py-3 bg-red-500/10 text-red-500 rounded-xl text-[9px] font-black uppercase tracking-widest border border-red-500/20 hover:bg-red-500 hover:text-white transition-all text-center">Log Out</button>
+           <button onClick={handleLogout} className="px-6 py-3 bg-red-500/10 text-red-500 rounded-xl text-[9px] font-black uppercase tracking-widest border border-red-500/20 hover:bg-red-500 hover:text-white transition-all text-center">Log Out</button>
         </div>
       </header>
 
